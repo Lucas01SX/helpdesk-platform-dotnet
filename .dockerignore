@@ -1,0 +1,23 @@
+# Build artifacts
+bin/
+obj/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.github/
+
+# IDE
+.vs/
+.idea/
+**/*.user
+
+# Docs / tests (not needed in image)
+docs/
+tests/
+*.md

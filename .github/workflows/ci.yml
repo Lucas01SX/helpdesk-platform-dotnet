@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: helpdesk_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Test (Unit)
+        run: dotnet test tests/Helpdesk.Tests.Unit --no-build -c Release --logger "trx;LogFileName=unit.trx"
+
+      - name: Test (Architecture)
+        run: dotnet test tests/Helpdesk.Tests.Architecture --no-build -c Release --logger "trx;LogFileName=arch.trx"
+
+      - name: Test (Integration)
+        run: dotnet test tests/Helpdesk.Tests.Integration --no-build -c Release --logger "trx;LogFileName=integration.trx"
+        env:
+          ConnectionStrings__Default: "Host=localhost;Port=5432;Database=helpdesk_test;Username=postgres;Password=postgres"
+
+      - name: NuGet audit
+        run: dotnet list package --vulnerable --include-transitive

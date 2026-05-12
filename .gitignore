@@ -1,0 +1,30 @@
+## .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+
+## Published output
+out/
+publish/
+
+## VS / Rider
+.vs/
+.idea/
+*.DotSettings.user
+
+## JetBrains Rider
+.idea/
+
+## Test results
+TestResults/
+*.trx
+*.coverage
+
+## Environment secrets — never commit these
+.env
+appsettings.*.Local.json
+
+## OS
+.DS_Store
+Thumbs.db

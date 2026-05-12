@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Helpdesk.API/Helpdesk.API.csproj" />
+    <Project Path="src/Helpdesk.Shared/Helpdesk.Shared.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Identity/Helpdesk.Modules.Identity.csproj" />
+    <Project Path="src/Modules/Notifications/Helpdesk.Modules.Notifications.csproj" />
+    <Project Path="src/Modules/SLA/Helpdesk.Modules.SLA.csproj" />
+    <Project Path="src/Modules/Tickets/Helpdesk.Modules.Tickets.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Helpdesk.Tests.Architecture/Helpdesk.Tests.Architecture.csproj" />
+    <Project Path="tests/Helpdesk.Tests.Integration/Helpdesk.Tests.Integration.csproj" />
+    <Project Path="tests/Helpdesk.Tests.Unit/Helpdesk.Tests.Unit.csproj" />
+  </Folder>
+</Solution>
