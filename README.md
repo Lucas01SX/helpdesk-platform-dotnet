@@ -104,6 +104,43 @@ dotnet test --filter "FullyQualifiedName~Should_Not_Resolve_Without_Assignee"
 
 ---
 
+## API Endpoints
+
+REST conventions: resources + proper HTTP verbs. Tokens always in the request body — never in the URL path (prevents server log exposure).
+
+### Auth (`/api/auth`)
+
+| Method | Path | Description | Status codes |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Create a new Customer account | `201` · `400` |
+| `POST` | `/api/auth/sessions` | Login — creates a session, sets HttpOnly refresh token cookie | `200` · `401` · `429` |
+| `DELETE` | `/api/auth/sessions/current` | Logout — deletes current session, clears cookie | `204` |
+| `PUT` | `/api/auth/sessions/current` | Token rotation — replaces current session with a new one | `200` · `401` |
+| `PATCH` | `/api/auth/email-verifications` | Confirm email ownership (token in body) | `204` · `400` |
+| `POST` | `/api/auth/password-resets` | Request a password reset email (always `204` — enumeration protection) | `204` · `429` |
+| `PATCH` | `/api/auth/password-resets` | Apply password reset (token in body) | `204` · `400` |
+
+**Response envelope:**
+```json
+// Success
+{ "data": { ... }, "timestamp": "2025-01-01T00:00:00Z" }
+
+// Error
+{ "success": false, "error": { "code": "identity.invalid_credentials", "message": "..." }, "timestamp": "..." }
+```
+
+**Rate limits:**
+- `POST /api/auth/sessions`: 5 requests / minute / IP
+- `POST /api/auth/password-resets`: 3 requests / hour / IP
+
+**Security:**
+- Access token returned in response body only — client keeps in memory, never LocalStorage
+- Refresh token in HttpOnly `Secure SameSite=Strict` cookie scoped to `/api/auth`
+- Refresh token rotation: every `PUT /sessions/current` issues a new token and revokes the old one
+- Token reuse detection: if a revoked refresh token is presented, the entire session family is immediately invalidated
+
+---
+
 ## Non-Negotiable Rules
 
 1. No Mediator / Command Bus — Use Cases injected directly via DI

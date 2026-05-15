@@ -1,6 +1,70 @@
-@Helpdesk.API_HostAddress = http://localhost:5212
+@host = http://localhost:5000
 
-GET {{Helpdesk.API_HostAddress}}/weatherforecast/
-Accept: application/json
+### ──────────────────────────── Register ────────────────────────────
+
+# POST /api/auth/register — create a new Customer account
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "name": "Alice",
+  "password": "Secret1@pass"
+}
+
+### ──────────────────────────── Login ────────────────────────────
+
+# POST /api/auth/sessions — create a session (login)
+# Sets HttpOnly refresh token cookie scoped to /api/auth
+POST {{host}}/api/auth/sessions
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "Secret1@pass"
+}
+
+### ──────────────────────────── Refresh ────────────────────────────
+
+# PUT /api/auth/sessions/current — replace current session (token rotation)
+# Reads refreshToken cookie; sets a new one
+PUT {{host}}/api/auth/sessions/current
+
+### ──────────────────────────── Logout ────────────────────────────
+
+# DELETE /api/auth/sessions/current — delete current session
+DELETE {{host}}/api/auth/sessions/current
+
+### ──────────────────────────── Email verification ────────────────────────────
+
+# PATCH /api/auth/email-verifications — confirm email with token (token in body, not URL)
+# Token is logged by LogEmailService in Development — check container/console logs
+PATCH {{host}}/api/auth/email-verifications
+Content-Type: application/json
+
+{
+  "token": "<token-from-logs>"
+}
+
+### ──────────────────────────── Password reset ────────────────────────────
+
+# POST /api/auth/password-resets — request a password reset
+# Always returns 204 regardless of whether email exists (enumeration protection)
+POST {{host}}/api/auth/password-resets
+Content-Type: application/json
+
+{
+  "email": "alice@example.com"
+}
 
 ###
+
+# PATCH /api/auth/password-resets — apply password reset (token in body, not URL)
+# Token is logged by LogEmailService in Development
+PATCH {{host}}/api/auth/password-resets
+Content-Type: application/json
+
+{
+  "token": "<token-from-logs>",
+  "newPassword": "NewSecret1@pass"
+}
