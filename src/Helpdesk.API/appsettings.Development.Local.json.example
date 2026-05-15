@@ -1,0 +1,8 @@
+{
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Port=5432;Database=helpdesk;Username=<user>;Password=<password>"
+  },
+  "Jwt": {
+    "SecretKey": "<at-least-32-char-random-secret>"
+  }
+}
