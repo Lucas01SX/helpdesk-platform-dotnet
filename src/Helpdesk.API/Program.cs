@@ -1,9 +1,11 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Helpdesk.API.Middleware;
 using Helpdesk.API.Persistence;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Identity.Infrastructure.Security;
+using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +27,8 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(o =>
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
     builder.Services.AddOpenApi();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -37,6 +40,7 @@ try
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
     builder.Services.AddIdentityModule(builder.Configuration);
+    builder.Services.AddTicketsModule();
 
     // JWT authentication
     builder.Services
