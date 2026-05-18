@@ -169,9 +169,10 @@ public sealed class SlaBreachProcessor(
 
     private async Task<Guid?> GetManagerWithLowestLoadAsync(CancellationToken ct)
     {
-        var tickets = db.Set<Ticket>();
+        var tickets = db.Set<Ticket>().AsNoTracking();
 
         return await db.Set<User>()
+            .AsNoTracking()
             .Where(u => u.Role == UserRole.Manager)
             .Select(u => new
             {

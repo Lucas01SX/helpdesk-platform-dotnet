@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Helpdesk.API.Controllers;
 
-[ApiController]
 [Route("api/tickets")]
 [Authorize]
 public sealed class TicketsController(
@@ -22,7 +21,7 @@ public sealed class TicketsController(
     AddCommentUseCase addCommentUseCase,
     UploadAttachmentUseCase uploadAttachmentUseCase,
     GetAttachmentFileUseCase getAttachmentFileUseCase,
-    TicketQueryService queryService) : ControllerBase
+    TicketQueryService queryService) : ApiControllerBase
 {
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private string ActorRole => User.FindFirstValue(ClaimTypes.Role)!;
@@ -210,12 +209,4 @@ public sealed class TicketsController(
         return BadRequest(Failure(result.Error));
     }
 
-    private static object Success(object? data) => new { data, timestamp = DateTime.UtcNow };
-
-    private static object Failure(Error error) => new
-    {
-        success = false,
-        error = new { code = error.Code, message = error.Message },
-        timestamp = DateTime.UtcNow
-    };
 }

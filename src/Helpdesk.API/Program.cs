@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Helpdesk.API;
 using Helpdesk.API.Middleware;
 using Helpdesk.API.Persistence;
 using Helpdesk.API.SLA;
@@ -30,7 +31,10 @@ try
         .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
     builder.Services.AddControllers().AddJsonOptions(o =>
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    {
+        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
     builder.Services.AddOpenApi();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -79,7 +83,7 @@ try
     {
         builder.Services.AddRateLimiter(options =>
         {
-            options.AddPolicy("login", context =>
+            options.AddPolicy(RateLimitPolicies.Login, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     factory: _ => new FixedWindowRateLimiterOptions
@@ -90,7 +94,7 @@ try
                         QueueLimit = 0
                     }));
 
-            options.AddPolicy("password-reset", context =>
+            options.AddPolicy(RateLimitPolicies.PasswordReset, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     factory: _ => new FixedWindowRateLimiterOptions
