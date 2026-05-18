@@ -19,6 +19,9 @@ public sealed class TicketsController(
     CancelTicketUseCase cancelTicketUseCase,
     TransferTicketUseCase transferTicketUseCase,
     ChangePriorityUseCase changePriorityUseCase,
+    AddCommentUseCase addCommentUseCase,
+    UploadAttachmentUseCase uploadAttachmentUseCase,
+    GetAttachmentFileUseCase getAttachmentFileUseCase,
     TicketQueryService queryService) : ControllerBase
 {
     private Guid ActorId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -101,6 +104,89 @@ public sealed class TicketsController(
             ? Ok(Success(ticket))
             : NotFound(Failure(TicketAppErrors.TicketNotFound));
     }
+
+    // POST /api/tickets/{id}/comments
+    [HttpPost("{id:guid}/comments")]
+    public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentRequest request, CancellationToken ct)
+    {
+        var enriched = request with { TicketId = id, AuthorId = ActorId, AuthorRole = ActorRole };
+        var result = await addCommentUseCase.ExecuteAsync(enriched, ct);
+        return result.IsSuccess
+            ? StatusCode(201, Success(new { commentId = result.Value }))
+            : MapCommentResult(result.Error!);
+    }
+
+    // GET /api/tickets/{id}/comments
+    [HttpGet("{id:guid}/comments")]
+    public async Task<IActionResult> ListComments(Guid id, CancellationToken ct)
+    {
+        var visible = await queryService.TicketVisibleToActorAsync(id, ActorId, ActorRole, ct);
+        if (!visible)
+            return NotFound(Failure(TicketAppErrors.TicketNotFound));
+
+        var comments = await queryService.ListCommentsAsync(id, ActorId, ActorRole, ct);
+        return Ok(Success(comments));
+    }
+
+    // POST /api/tickets/{id}/attachments
+    [HttpPost("{id:guid}/attachments")]
+    public async Task<IActionResult> UploadAttachment(
+        Guid id, IFormFile? file, [FromQuery] string visibility = "Public", CancellationToken ct = default)
+    {
+        var request = new UploadAttachmentRequest(
+            TicketId: id,
+            UploadedBy: ActorId,
+            UploaderRole: ActorRole,
+            FileName: file?.FileName ?? string.Empty,
+            FileContent: file?.OpenReadStream() ?? Stream.Null,
+            ContentType: file?.ContentType ?? "application/octet-stream",
+            SizeBytes: file?.Length ?? 0,
+            Visibility: visibility);
+
+        var result = await uploadAttachmentUseCase.ExecuteAsync(request, ct);
+        return result.IsSuccess
+            ? StatusCode(201, Success(new { attachmentId = result.Value }))
+            : MapAttachmentResult(result.Error!);
+    }
+
+    // GET /api/tickets/{id}/attachments
+    [HttpGet("{id:guid}/attachments")]
+    public async Task<IActionResult> ListAttachments(Guid id, CancellationToken ct)
+    {
+        var visible = await queryService.TicketVisibleToActorAsync(id, ActorId, ActorRole, ct);
+        if (!visible)
+            return NotFound(Failure(TicketAppErrors.TicketNotFound));
+
+        var attachments = await queryService.ListAttachmentsAsync(id, ActorId, ActorRole, ct);
+        return Ok(Success(attachments));
+    }
+
+    // GET /api/tickets/{id}/attachments/{attachmentId}
+    [HttpGet("{id:guid}/attachments/{attachmentId:guid}")]
+    public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
+    {
+        var result = await getAttachmentFileUseCase.ExecuteAsync(attachmentId, ActorId, ActorRole, ct);
+        if (!result.IsSuccess)
+            return MapAttachmentResult(result.Error!);
+
+        var file = result.Value!;
+        return File(file.Stream, file.ContentType, file.FileName);
+    }
+
+    private IActionResult MapCommentResult(Error error) => error.Code switch
+    {
+        "ticket.not_found" => NotFound(Failure(error)),
+        "comment.forbidden" or "comment.internal_forbidden" => StatusCode(403, Failure(error)),
+        _ => BadRequest(Failure(error))
+    };
+
+    private IActionResult MapAttachmentResult(Error error) => error.Code switch
+    {
+        "ticket.not_found" or "attachment.not_found" => NotFound(Failure(error)),
+        "attachment.forbidden" or "attachment.internal_forbidden"
+            or "attachment.download_forbidden" => StatusCode(403, Failure(error)),
+        _ => BadRequest(Failure(error))
+    };
 
     private IActionResult MapResult(Helpdesk.Shared.Results.Result result)
     {
