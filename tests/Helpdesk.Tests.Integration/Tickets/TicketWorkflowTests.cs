@@ -537,4 +537,51 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
+
+    [Fact]
+    public async Task GetTicket_Should_Return_404_When_Customer_Accesses_Another_Customers_Ticket()
+    {
+        var (customerAToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (customerBToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerAToken);
+
+        using var client = AuthClient(customerBToken);
+        var response = await client.GetAsync($"/api/tickets/{ticketId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CreateTicket_Should_Return_400_When_Title_Exceeds_200_Characters()
+    {
+        var (token, _) = await SeedAndLoginAsync(UserRole.Customer);
+        using var client = AuthClient(token);
+
+        var response = await client.PostAsJsonAsync("/api/tickets", new
+        {
+            title = new string('A', 201),
+            description = "Valid description",
+            priority = "Low",
+            category = "Support"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateTicket_Should_Return_400_When_Description_Exceeds_2000_Characters()
+    {
+        var (token, _) = await SeedAndLoginAsync(UserRole.Customer);
+        using var client = AuthClient(token);
+
+        var response = await client.PostAsJsonAsync("/api/tickets", new
+        {
+            title = "Valid title",
+            description = new string('A', 2001),
+            priority = "Low",
+            category = "Support"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

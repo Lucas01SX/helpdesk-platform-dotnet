@@ -96,7 +96,7 @@ public sealed class TicketsController(
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetTicket(Guid id, CancellationToken ct)
     {
-        var ticket = await queryService.GetByIdAsync(id, ct);
+        var ticket = await queryService.GetByIdAsync(id, ActorId, ActorRole, ct);
         return ticket is not null
             ? Ok(Success(ticket))
             : NotFound(Failure(TicketAppErrors.TicketNotFound));

@@ -24,10 +24,15 @@ public sealed class TicketQueryService(DbContext context)
             .ToListAsync(ct);
     }
 
-    public async Task<TicketResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<TicketResponse?> GetByIdAsync(
+        Guid id, Guid actorId, string actorRole, CancellationToken ct = default)
     {
-        return await _tickets.AsNoTracking()
-            .Where(t => t.Id == id)
+        var query = _tickets.AsNoTracking().Where(t => t.Id == id);
+
+        if (actorRole == "Customer")
+            query = query.Where(t => t.CustomerId == actorId);
+
+        return await query
             .Select(t => new TicketResponse(
                 t.Id, t.Title, t.Description, t.Status.ToString(), t.Priority.ToString(),
                 t.Category.ToString(), t.CustomerId, t.AssigneeId, t.CreatedAt, t.SlaDueAt,
