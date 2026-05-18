@@ -21,12 +21,20 @@ public sealed class LoginUseCase(
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(7);
     private const int MaxActiveSessions = 5;
 
+    // Valid-format Argon2id placeholder (base64(16-byte salt).base64(32-byte hash)).
+    // Used when the email does not exist so Argon2id always runs, keeping response
+    // time constant and preventing timing-based email enumeration.
+    private const string DummyHash =
+        "AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
     public async Task<Result<AuthResponse>> ExecuteAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userRepository.FindByEmailAsync(request.Email, ct);
 
-        // Enumeration protection: same error for "not found" and "wrong password"
-        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        var hashToVerify = user?.PasswordHash ?? DummyHash;
+        var passwordValid = passwordHasher.Verify(request.Password, hashToVerify);
+
+        if (user is null || !passwordValid)
             return IdentityErrors.InvalidCredentials;
 
         if (!user.EmailVerified)

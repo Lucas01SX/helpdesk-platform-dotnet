@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Helpdesk.API;
+using Helpdesk.API.Controllers;
 using Helpdesk.API.Middleware;
 using Helpdesk.API.Persistence;
 using Helpdesk.API.SLA;
@@ -11,6 +12,7 @@ using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -24,18 +26,44 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
     builder.Host.UseSerilog((ctx, services, config) => config
         .ReadFrom.Configuration(ctx.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    builder.Services.AddControllers().AddJsonOptions(o =>
-    {
-        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
+    builder.Services.AddControllers()
+        .AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        })
+        .ConfigureApiBehaviorOptions(options =>
+        {
+            options.InvalidModelStateResponseFactory = ctx =>
+            {
+                var response = new ApiFailureResponse(
+                    false,
+                    new ApiErrorDetail("validation_error", "One or more validation errors occurred."),
+                    DateTime.UtcNow);
+                return new BadRequestObjectResult(response);
+            };
+        });
     builder.Services.AddOpenApi();
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy
+                .WithOrigins("https://lucas01sx.github.io", "http://localhost:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    });
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
@@ -131,6 +159,7 @@ try
     }
 
     app.UseSecurityHeaders();
+    app.UseCors();
     app.UseHttpsRedirection();
     app.UseSerilogRequestLogging();
     if (!app.Environment.IsEnvironment("Test"))
