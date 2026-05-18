@@ -3,6 +3,7 @@ using System;
 using Helpdesk.API.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Helpdesk.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518023925_AddTicketEntity")]
+    partial class AddTicketEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -177,45 +180,6 @@ namespace Helpdesk.API.Migrations
                     b.ToTable("user_sessions", (string)null);
                 });
 
-            modelBuilder.Entity("Helpdesk.Modules.SLA.Domain.Entities.SlaMonthlyScore", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Month")
-                        .HasColumnType("integer")
-                        .HasColumnName("month");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("integer")
-                        .HasColumnName("score");
-
-                    b.Property<int>("TicketsBreached")
-                        .HasColumnType("integer")
-                        .HasColumnName("tickets_breached");
-
-                    b.Property<int>("TicketsWithinSla")
-                        .HasColumnType("integer")
-                        .HasColumnName("tickets_within_sla");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer")
-                        .HasColumnName("year");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Year", "Month")
-                        .IsUnique();
-
-                    b.ToTable("sla_monthly_scores", (string)null);
-                });
-
             modelBuilder.Entity("Helpdesk.Modules.Tickets.Domain.Entities.Ticket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -226,10 +190,6 @@ namespace Helpdesk.API.Migrations
                     b.Property<Guid?>("AssigneeId")
                         .HasColumnType("uuid")
                         .HasColumnName("assignee_id");
-
-                    b.Property<DateTime?>("AutoAssignedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("auto_assigned_at");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -258,25 +218,9 @@ namespace Helpdesk.API.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("priority_change_count");
 
-                    b.Property<DateTime?>("SlaBreachedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sla_breached_at");
-
                     b.Property<DateTime>("SlaDueAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sla_due_at");
-
-                    b.Property<bool>("SlaExcluded")
-                        .HasColumnType("boolean")
-                        .HasColumnName("sla_excluded");
-
-                    b.Property<bool>("SlaScoreApplied")
-                        .HasColumnType("boolean")
-                        .HasColumnName("sla_score_applied");
-
-                    b.Property<int>("SlaUnassignedPenaltyCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("sla_unassigned_penalty_count");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -300,92 +244,6 @@ namespace Helpdesk.API.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("tickets", (string)null);
-                });
-
-            modelBuilder.Entity("Helpdesk.Modules.Tickets.Domain.Entities.TicketAttachment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("content_type");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("file_name");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("size_bytes");
-
-                    b.Property<string>("StoragePath")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("storage_path");
-
-                    b.Property<Guid>("TicketId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ticket_id");
-
-                    b.Property<Guid>("UploadedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("uploaded_by");
-
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("visibility");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ticket_attachments", (string)null);
-                });
-
-            modelBuilder.Entity("Helpdesk.Modules.Tickets.Domain.Entities.TicketComment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("AuthorId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("author_id");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
-                        .HasColumnName("content");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("TicketId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("ticket_id");
-
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("visibility");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ticket_comments", (string)null);
                 });
 #pragma warning restore 612, 618
         }

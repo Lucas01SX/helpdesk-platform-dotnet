@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Helpdesk.API.Controllers;
 
-[ApiController]
 [Route("api/auth")]
 public sealed class AuthController(
     RegisterUseCase registerUseCase,
@@ -15,7 +14,7 @@ public sealed class AuthController(
     LogoutUseCase logoutUseCase,
     VerifyEmailUseCase verifyEmailUseCase,
     RequestPasswordResetUseCase requestPasswordResetUseCase,
-    ResetPasswordUseCase resetPasswordUseCase) : ControllerBase
+    ResetPasswordUseCase resetPasswordUseCase) : ApiControllerBase
 {
     // POST /api/auth/register — creates a new user (Customer role)
     [HttpPost("register")]
@@ -29,7 +28,7 @@ public sealed class AuthController(
 
     // POST /api/auth/sessions — creates a new session (login)
     [HttpPost("sessions")]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting(RateLimitPolicies.Login)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var enriched = request with
@@ -82,7 +81,7 @@ public sealed class AuthController(
 
     // POST /api/auth/password-resets — creates a new password reset token
     [HttpPost("password-resets")]
-    [EnableRateLimiting("password-reset")]
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
     public async Task<IActionResult> RequestPasswordReset(
         [FromBody] RequestPasswordResetRequest request, CancellationToken ct)
     {
@@ -110,16 +109,4 @@ public sealed class AuthController(
         });
     }
 
-    private static object Success(object? data) => new
-    {
-        data,
-        timestamp = DateTime.UtcNow
-    };
-
-    private static object Failure(Error error) => new
-    {
-        success = false,
-        error = new { code = error.Code, message = error.Message },
-        timestamp = DateTime.UtcNow
-    };
 }

@@ -1,9 +1,14 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Helpdesk.API;
 using Helpdesk.API.Middleware;
 using Helpdesk.API.Persistence;
+using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Identity.Infrastructure.Security;
+using Helpdesk.Modules.SLA;
+using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +30,11 @@ try
         .Enrich.FromLogContext()
         .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
     builder.Services.AddOpenApi();
 
     builder.Services.AddDbContext<AppDbContext>(options =>
@@ -37,6 +46,11 @@ try
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
 
     builder.Services.AddIdentityModule(builder.Configuration);
+    builder.Services.AddTicketsModule();
+    builder.Services.AddSlaModule();
+
+    builder.Services.AddScoped<SlaBreachProcessor>();
+    builder.Services.AddHostedService<SlaBreachMonitorService>();
 
     // JWT authentication
     builder.Services
@@ -69,7 +83,7 @@ try
     {
         builder.Services.AddRateLimiter(options =>
         {
-            options.AddPolicy("login", context =>
+            options.AddPolicy(RateLimitPolicies.Login, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     factory: _ => new FixedWindowRateLimiterOptions
@@ -80,7 +94,7 @@ try
                         QueueLimit = 0
                     }));
 
-            options.AddPolicy("password-reset", context =>
+            options.AddPolicy(RateLimitPolicies.PasswordReset, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                     factory: _ => new FixedWindowRateLimiterOptions
