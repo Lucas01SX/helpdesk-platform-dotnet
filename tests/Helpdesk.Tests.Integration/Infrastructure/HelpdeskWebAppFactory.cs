@@ -2,6 +2,7 @@ using Helpdesk.API.Persistence;
 using Helpdesk.Modules.Identity.Application.Interfaces;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Enums;
+using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ public sealed class HelpdeskWebAppFactory : WebApplicationFactory<Program>, IAsy
         .Build();
 
     public InMemoryEmailService EmailService { get; } = new();
+    public FakeTimeProvider TimeProvider { get; } = new();
 
     // Returns a client whose cookies are managed automatically (required for session flows).
     // Uses https://localhost so the Secure cookie attribute is honoured.
@@ -83,6 +85,13 @@ public sealed class HelpdeskWebAppFactory : WebApplicationFactory<Program>, IAsy
                 services.Remove(emailDescriptor);
 
             services.AddSingleton<IEmailService>(EmailService);
+
+            var clockDescriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(IDateTimeProvider));
+            if (clockDescriptor is not null)
+                services.Remove(clockDescriptor);
+
+            services.AddSingleton<IDateTimeProvider>(TimeProvider);
         });
     }
 }

@@ -3,8 +3,10 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Helpdesk.API.Middleware;
 using Helpdesk.API.Persistence;
+using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Identity.Infrastructure.Security;
+using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -41,6 +43,10 @@ try
 
     builder.Services.AddIdentityModule(builder.Configuration);
     builder.Services.AddTicketsModule();
+    builder.Services.AddSlaModule();
+
+    builder.Services.AddScoped<SlaBreachProcessor>();
+    builder.Services.AddHostedService<SlaBreachMonitorService>();
 
     // JWT authentication
     builder.Services

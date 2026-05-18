@@ -53,6 +53,14 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .HasColumnName("transfer_count")
             .IsRequired();
 
+        builder.Property(t => t.SlaBreachedAt).HasColumnName("sla_breached_at");
+        builder.Property(t => t.AutoAssignedAt).HasColumnName("auto_assigned_at");
+        builder.Property(t => t.SlaScoreApplied).HasColumnName("sla_score_applied").IsRequired();
+        builder.Property(t => t.SlaExcluded).HasColumnName("sla_excluded").IsRequired();
+        builder.Property(t => t.SlaUnassignedPenaltyCount)
+            .HasColumnName("sla_unassigned_penalty_count")
+            .IsRequired();
+
         builder.Ignore(t => t.DomainEvents);
     }
 }

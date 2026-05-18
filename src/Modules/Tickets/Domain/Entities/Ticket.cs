@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Helpdesk.Modules.Tickets.Domain.Enums;
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Events;
@@ -27,6 +28,14 @@ public sealed class Ticket
     public int PriorityChangeCount { get; private set; }
     public int TransferCount { get; private set; }
 
+    // SLA tracking — managed by SlaBreachProcessor, not domain invariants
+    public DateTime? SlaBreachedAt { get; private set; }
+    public DateTime? AutoAssignedAt { get; private set; }
+    public bool SlaScoreApplied { get; private set; }
+    public bool SlaExcluded { get; private set; }
+    public int SlaUnassignedPenaltyCount { get; private set; }
+
+    [NotMapped]
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     private Ticket() { }
@@ -111,6 +120,7 @@ public sealed class Ticket
 
         var from = Status;
         Status = TicketStatus.Cancelled;
+        SlaExcluded = true;
         UpdatedAt = now;
 
         _domainEvents.Add(new TicketCancelled(Id, customerId, reason, false, now));
@@ -185,6 +195,40 @@ public sealed class Ticket
 
         _domainEvents.Add(new PriorityChanged(Id, from, newPriority, actorId, now));
         return Result.Ok();
+    }
+
+    public void MarkSlaBreached(DateTime now)
+    {
+        if (SlaBreachedAt.HasValue) return;
+        SlaBreachedAt = now;
+        UpdatedAt = now;
+        _domainEvents.Add(new SlaBreached(Id, SlaDueAt, now));
+    }
+
+    public Result AutoAssign(Guid managerId, string criteria, DateTime now)
+    {
+        if (Status is TicketStatus.Resolved or TicketStatus.Cancelled)
+            return TicketErrors.CannotAssumeFromFinalState;
+
+        var from = Status;
+        AssigneeId = managerId;
+        Status = TicketStatus.InProgress;
+        AutoAssignedAt = now;
+        UpdatedAt = now;
+
+        _domainEvents.Add(new AutoAssigned(Id, managerId, criteria, now));
+        _domainEvents.Add(new StatusChanged(Id, from, TicketStatus.InProgress, now));
+        return Result.Ok();
+    }
+
+    public void MarkSlaScoreApplied()
+    {
+        SlaScoreApplied = true;
+    }
+
+    public void IncrementUnassignedPenaltyCount()
+    {
+        SlaUnassignedPenaltyCount++;
     }
 
     private static DateTime ComputeSlaDue(TicketPriority priority, DateTime now) => priority switch
