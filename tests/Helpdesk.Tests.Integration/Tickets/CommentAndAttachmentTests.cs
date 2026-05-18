@@ -123,7 +123,7 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
     }
 
     [Fact]
-    public async Task AddComment_Should_Return_403_When_Customer_Comments_On_Another_Customers_Ticket()
+    public async Task AddComment_Should_Return_404_When_Customer_Comments_On_Another_Customers_Ticket()
     {
         var (customerAToken, _) = await SeedAndLoginAsync(UserRole.Customer);
         var (customerBToken, _) = await SeedAndLoginAsync(UserRole.Customer);
@@ -133,7 +133,20 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
         var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/comments",
             new { content = "Not my ticket.", visibility = "Public" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AddComment_Should_Return_400_When_Content_Exceeds_4000_Characters()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/comments",
+            new { content = new string('x', 4001), visibility = "Public" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -292,7 +305,7 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
     }
 
     [Fact]
-    public async Task UploadAttachment_Should_Return_403_When_Customer_Uploads_To_Another_Ticket()
+    public async Task UploadAttachment_Should_Return_404_When_Customer_Uploads_To_Another_Ticket()
     {
         var (customerAToken, _) = await SeedAndLoginAsync(UserRole.Customer);
         var (customerBToken, _) = await SeedAndLoginAsync(UserRole.Customer);
@@ -303,7 +316,7 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
             $"/api/tickets/{ticketId}/attachments?visibility=Public",
             BuildFileContent());
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]

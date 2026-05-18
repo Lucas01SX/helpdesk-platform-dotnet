@@ -18,6 +18,9 @@ public sealed class AddCommentUseCase(
         if (string.IsNullOrWhiteSpace(request.Content))
             return TicketAppErrors.CommentContentRequired;
 
+        if (request.Content.Length > 4000)
+            return TicketAppErrors.CommentContentTooLong;
+
         var ticket = await ticketRepository.FindByIdAsync(request.TicketId, ct);
         if (ticket is null)
             return TicketAppErrors.TicketNotFound;
@@ -25,7 +28,7 @@ public sealed class AddCommentUseCase(
         var isCustomer = request.AuthorRole == "Customer";
 
         if (isCustomer && ticket.CustomerId != request.AuthorId)
-            return TicketAppErrors.CommentTicketForbidden;
+            return TicketAppErrors.TicketNotFound;
 
         if (!Enum.TryParse<CommentVisibility>(request.Visibility, ignoreCase: true, out var visibility))
             visibility = CommentVisibility.Public;

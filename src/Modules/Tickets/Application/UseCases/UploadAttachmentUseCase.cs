@@ -31,7 +31,7 @@ public sealed class UploadAttachmentUseCase(
         var isCustomer = request.UploaderRole == "Customer";
 
         if (isCustomer && ticket.CustomerId != request.UploadedBy)
-            return TicketAppErrors.AttachmentTicketForbidden;
+            return TicketAppErrors.TicketNotFound;
 
         if (!Enum.TryParse<AttachmentVisibility>(request.Visibility, ignoreCase: true, out var visibility))
             visibility = AttachmentVisibility.Public;

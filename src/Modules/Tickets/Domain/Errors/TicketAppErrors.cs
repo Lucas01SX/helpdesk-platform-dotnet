@@ -14,6 +14,9 @@ public static class TicketAppErrors
     public static readonly Error CommentContentRequired =
         new("comment.content_required", "Comment content is required.");
 
+    public static readonly Error CommentContentTooLong =
+        new("comment.content_too_long", "Comment content must not exceed 4000 characters.");
+
     public static readonly Error CommentInternalForbidden =
         new("comment.internal_forbidden", "Only agents and managers can post internal comments.");
 
