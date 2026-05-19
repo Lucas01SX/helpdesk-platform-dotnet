@@ -41,4 +41,8 @@ public static class TicketAppErrors
 
     public static readonly Error AttachmentDownloadForbidden =
         new("attachment.download_forbidden", "You do not have permission to download this attachment.");
+
+    public static readonly Error AttachmentFileTypeNotAllowed =
+        new("attachment.file_type_not_allowed",
+            "File type is not allowed. Accepted formats: jpg, jpeg, png, gif, webp, pdf, doc, docx, txt, csv, xlsx, log.");
 }

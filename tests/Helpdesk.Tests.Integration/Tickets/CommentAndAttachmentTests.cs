@@ -4,8 +4,11 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Helpdesk.API.Persistence;
 using Helpdesk.Modules.Identity.Domain.Enums;
+using Helpdesk.Modules.Tickets.Domain.Entities;
 using Helpdesk.Tests.Integration.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Helpdesk.Tests.Integration.Tickets;
 
@@ -482,5 +485,115 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
             $"/api/tickets/{ticketId}/attachments/{Guid.NewGuid()}");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── POST /api/tickets/{id}/attachments — file type hardening ─────────────
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_400_When_Mime_Type_Is_Blocked()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        // Valid extension, blocked MIME — MIME whitelist must reject it
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("content", "report.txt", "application/x-msdownload"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetProperty("code").GetString()
+            .Should().Be("attachment.file_type_not_allowed");
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_400_When_Extension_Is_Blocked()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        // Blocked extension — extension whitelist must reject it
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("MZ", "malware.exe", "application/octet-stream"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetProperty("code").GetString()
+            .Should().Be("attachment.file_type_not_allowed");
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_400_When_Blocked_Extension_Disguised_As_Valid_Mime()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        // .exe disguised as image/jpeg — extension check must reject regardless of MIME
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("MZ", "malware.exe", "image/jpeg"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetProperty("code").GetString()
+            .Should().Be("attachment.file_type_not_allowed");
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_201_For_Pdf_With_Correct_Mime()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("%PDF-1.4", "report.pdf", "application/pdf"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_201_For_Jpeg_With_Correct_Mime()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("jpeg data", "photo.jpg", "image/jpeg"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Store_File_With_Internal_Name_Only()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = AuthClient(customerToken);
+        const string originalFileName = "my-secret-report.pdf";
+        var response = await client.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("%PDF-1.4", originalFileName, "application/pdf"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var attachmentId = Guid.Parse(
+            body.GetProperty("data").GetProperty("attachmentId").GetString()!);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var attachment = await db.Set<TicketAttachment>().FindAsync(attachmentId);
+
+        attachment!.FileName.Should().Be(originalFileName);
+        attachment.StoragePath.Should().NotContain(originalFileName);
+        Path.GetFileName(attachment.StoragePath).Should().MatchRegex(@"^[0-9a-f]{32}$");
     }
 }

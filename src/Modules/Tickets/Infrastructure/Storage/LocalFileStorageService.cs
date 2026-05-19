@@ -14,7 +14,7 @@ internal sealed class LocalFileStorageService(IConfiguration configuration) : IF
         var ticketDir = Path.Combine(BasePath, ticketId.ToString());
         Directory.CreateDirectory(ticketDir);
 
-        var storedName = $"{Guid.NewGuid():N}_{Path.GetFileName(fileName)}";
+        var storedName = $"{Guid.NewGuid():N}";
         var fullPath = Path.Combine(ticketDir, storedName);
 
         await using var fs = File.Create(fullPath);

@@ -18,6 +18,24 @@ public sealed class UploadAttachmentUseCase(
 {
     private const long MaxFileSizeBytes = 10L * 1024 * 1024;
 
+    private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".gif", ".webp",
+        ".pdf", ".doc", ".docx", ".txt", ".csv", ".xlsx", ".log"
+    };
+
+    private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/plain",
+        "text/csv", "application/csv",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    };
+
     public async Task<Result<Guid>> ExecuteAsync(UploadAttachmentRequest request, CancellationToken ct = default)
     {
         if (request.SizeBytes == 0)
@@ -25,6 +43,10 @@ public sealed class UploadAttachmentUseCase(
 
         if (request.SizeBytes > MaxFileSizeBytes)
             return TicketAppErrors.AttachmentTooLarge;
+
+        var extension = Path.GetExtension(request.FileName);
+        if (!AllowedExtensions.Contains(extension) || !AllowedMimeTypes.Contains(request.ContentType))
+            return TicketAppErrors.AttachmentFileTypeNotAllowed;
 
         var ticket = await ticketRepository.FindByIdAsync(request.TicketId, ct);
         if (ticket is null)
