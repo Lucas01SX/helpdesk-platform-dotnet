@@ -38,8 +38,8 @@ public sealed class TicketsController(
             : BadRequest(Failure(result.Error!));
     }
 
-    // POST /api/tickets/{id}/assignments — Agent/Manager assigns themselves
-    [HttpPost("{id:guid}/assignments")]
+    // POST /api/tickets/{id}/assign — Agent/Manager assigns themselves
+    [HttpPost("{id:guid}/assign")]
     [Authorize(Roles = "SupportAgent,Manager")]
     public async Task<IActionResult> AssignTicket(Guid id, CancellationToken ct)
     {
@@ -47,8 +47,8 @@ public sealed class TicketsController(
         return MapResult(result);
     }
 
-    // POST /api/tickets/{id}/resolution
-    [HttpPost("{id:guid}/resolution")]
+    // POST /api/tickets/{id}/resolve
+    [HttpPost("{id:guid}/resolve")]
     [Authorize(Roles = "SupportAgent,Manager")]
     public async Task<IActionResult> ResolveTicket(Guid id, [FromBody] ResolveTicketRequest request, CancellationToken ct)
     {
@@ -57,8 +57,8 @@ public sealed class TicketsController(
         return MapResult(result);
     }
 
-    // POST /api/tickets/{id}/cancellation — Customer (own ticket) or Manager
-    [HttpPost("{id:guid}/cancellation")]
+    // POST /api/tickets/{id}/cancel — Customer (own ticket) or Manager
+    [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> CancelTicket(Guid id, [FromBody] CancelTicketRequest request, CancellationToken ct)
     {
         var enriched = request with { TicketId = id, ActorId = ActorId, ActorRole = ActorRole };
@@ -66,8 +66,8 @@ public sealed class TicketsController(
         return MapResult(result);
     }
 
-    // POST /api/tickets/{id}/transfers
-    [HttpPost("{id:guid}/transfers")]
+    // POST /api/tickets/{id}/transfer
+    [HttpPost("{id:guid}/transfer")]
     [Authorize(Roles = "SupportAgent,Manager")]
     public async Task<IActionResult> TransferTicket(Guid id, [FromBody] TransferTicketRequest request, CancellationToken ct)
     {
@@ -76,8 +76,8 @@ public sealed class TicketsController(
         return MapResult(result);
     }
 
-    // POST /api/tickets/{id}/priority
-    [HttpPost("{id:guid}/priority")]
+    // PATCH /api/tickets/{id}/priority
+    [HttpPatch("{id:guid}/priority")]
     [Authorize(Roles = "SupportAgent,Manager")]
     public async Task<IActionResult> ChangePriority(Guid id, [FromBody] ChangePriorityRequest request, CancellationToken ct)
     {

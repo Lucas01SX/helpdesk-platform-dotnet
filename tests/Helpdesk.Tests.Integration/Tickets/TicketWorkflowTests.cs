@@ -58,7 +58,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
     {
         var ticketId = await CreateTicketAsync(customerToken);
         using var client = AuthClient(agentToken);
-        var r = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var r = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
         r.StatusCode.Should().Be(HttpStatusCode.NoContent);
         return ticketId;
     }
@@ -142,7 +142,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    // ── POST /api/tickets/{id}/assignments ────────────────────────────────────
+    // ── POST /api/tickets/{id}/assign ────────────────────────────────────────
 
     [Fact]
     public async Task AssignTicket_Should_Return_204_When_Agent_Assumes_Open_Ticket()
@@ -152,7 +152,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -165,7 +165,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -178,10 +178,10 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Resolved the issue." });
 
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -192,7 +192,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var (token, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
         using var client = AuthClient(token);
 
-        var response = await client.PostAsync($"/api/tickets/{Guid.NewGuid()}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{Guid.NewGuid()}/assign", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -204,12 +204,12 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(customerToken);
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    // ── POST /api/tickets/{id}/resolution ─────────────────────────────────────
+    // ── POST /api/tickets/{id}/resolve ───────────────────────────────────────
 
     [Fact]
     public async Task ResolveTicket_Should_Return_204_When_Assignee_Resolves()
@@ -219,7 +219,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Fixed by restarting the service." });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -234,7 +234,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentAToken);
 
         using var client = AuthClient(agentBToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "I'll resolve this too." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -248,7 +248,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "   " });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -260,13 +260,13 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var (token, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
         using var client = AuthClient(token);
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/resolve",
             new { description = "Resolved." });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // ── POST /api/tickets/{id}/cancellation ───────────────────────────────────
+    // ── POST /api/tickets/{id}/cancel ────────────────────────────────────────
 
     [Fact]
     public async Task CancelTicket_Should_Return_204_When_Customer_Cancels_Own_Ticket()
@@ -275,7 +275,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(customerToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -289,7 +289,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(managerToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = "Duplicate of ticket #42." });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -303,7 +303,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(managerToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = "" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -317,11 +317,11 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var agentClient = AuthClient(agentToken);
-        await agentClient.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        await agentClient.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Done." });
 
         using var customerClient = AuthClient(customerToken);
-        var response = await customerClient.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await customerClient.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -333,13 +333,13 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var (token, _) = await SeedAndLoginAsync(UserRole.Customer);
         using var client = AuthClient(token);
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/cancel",
             new { reason = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // ── POST /api/tickets/{id}/transfers ──────────────────────────────────────
+    // ── POST /api/tickets/{id}/transfer ──────────────────────────────────────
 
     [Fact]
     public async Task TransferTicket_Should_Return_204_When_Assignee_Transfers()
@@ -350,7 +350,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentAToken);
 
         using var client = AuthClient(agentAToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfers",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfer",
             new { newAssigneeId = agentBId, reason = "Reassigning to specialist." });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -364,7 +364,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfers",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfer",
             new { newAssigneeId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -379,7 +379,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentAToken);
 
         using var client = AuthClient(agentBToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfers",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfer",
             new { newAssigneeId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -391,13 +391,13 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var (token, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
         using var client = AuthClient(token);
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/transfers",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/transfer",
             new { newAssigneeId = Guid.NewGuid() });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    // ── POST /api/tickets/{id}/priority ───────────────────────────────────────
+    // ── PATCH /api/tickets/{id}/priority ─────────────────────────────────────
 
     [Fact]
     public async Task ChangePriority_Should_Return_204_When_Assignee_Changes_Priority()
@@ -407,7 +407,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority",
+        var response = await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority",
             new { priority = "High" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
@@ -421,11 +421,11 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "High" });
-        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "Medium" });
-        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "Low" });
+        await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "High" });
+        await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "Medium" });
+        await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority", new { priority = "Low" });
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority",
+        var response = await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority",
             new { priority = "High" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -440,7 +440,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentAToken);
 
         using var client = AuthClient(agentBToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority",
+        var response = await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority",
             new { priority = "High" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -452,7 +452,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var (token, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
         using var client = AuthClient(token);
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/priority",
+        var response = await client.PatchAsJsonAsync($"/api/tickets/{Guid.NewGuid()}/priority",
             new { priority = "High" });
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -585,7 +585,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
-    // ── POST /api/tickets/{id}/resolution — missing paths ────────────────────
+    // ── POST /api/tickets/{id}/resolve — missing paths ───────────────────────
 
     [Fact]
     public async Task ResolveTicket_Should_Return_409_When_Ticket_Is_Open()
@@ -595,7 +595,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Trying to resolve an Open ticket." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -609,16 +609,16 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentToken);
 
         using var client = AuthClient(agentToken);
-        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "First resolution." });
 
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Trying to resolve again." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
-    // ── POST /api/tickets/{id}/cancellation — missing paths ──────────────────
+    // ── POST /api/tickets/{id}/cancel — missing paths ────────────────────────
 
     [Fact]
     public async Task CancelTicket_Should_Return_403_When_Customer_Cancels_Another_Customers_Ticket()
@@ -628,7 +628,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerAToken);
 
         using var client = AuthClient(customerBToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -642,13 +642,13 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = (string?)null });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
-    // ── POST /api/tickets/{id}/priority — missing path ────────────────────────
+    // ── PATCH /api/tickets/{id}/priority — missing path ──────────────────────
 
     [Fact]
     public async Task ChangePriority_Should_Return_409_When_Ticket_Is_Open()
@@ -658,7 +658,7 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/priority",
+        var response = await client.PatchAsJsonAsync($"/api/tickets/{ticketId}/priority",
             new { priority = "High" });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);

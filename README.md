@@ -141,11 +141,11 @@ All tokens go in the request body or cookie — never in the URL path.
 | `POST` | `/api/tickets` | Open a new ticket | Customer | `201` · `400` |
 | `GET` | `/api/tickets` | List tickets (scoped by role) | Any | `200` |
 | `GET` | `/api/tickets/{id}` | Get ticket details | Any | `200` · `404` |
-| `POST` | `/api/tickets/{id}/assignments` | Assign ticket to self | Agent · Manager | `204` · `404` · `409` |
-| `POST` | `/api/tickets/{id}/resolution` | Resolve ticket | Agent · Manager | `204` · `403` · `404` · `409` |
-| `POST` | `/api/tickets/{id}/cancellation` | Cancel ticket | Customer · Manager | `204` · `403` · `404` · `409` |
-| `POST` | `/api/tickets/{id}/transfers` | Transfer to another agent | Agent · Manager | `204` · `403` · `404` · `409` |
-| `POST` | `/api/tickets/{id}/priority` | Change ticket priority | Agent · Manager | `204` · `403` · `404` · `409` |
+| `POST` | `/api/tickets/{id}/assign` | Assign ticket to self | Agent · Manager | `204` · `404` · `409` |
+| `POST` | `/api/tickets/{id}/resolve` | Resolve ticket | Agent · Manager | `204` · `403` · `404` · `409` |
+| `POST` | `/api/tickets/{id}/cancel` | Cancel ticket | Customer · Manager | `204` · `403` · `404` · `409` |
+| `POST` | `/api/tickets/{id}/transfer` | Transfer to another agent | Agent · Manager | `204` · `403` · `404` · `409` |
+| `PATCH` | `/api/tickets/{id}/priority` | Change ticket priority | Agent · Manager | `204` · `403` · `404` · `409` |
 | `POST` | `/api/tickets/{id}/comments` | Add a comment | Any | `201` · `400` · `403` · `404` |
 | `GET` | `/api/tickets/{id}/comments` | List comments (filtered by visibility) | Any | `200` · `404` |
 | `POST` | `/api/tickets/{id}/attachments` | Upload attachment | Any | `201` · `400` · `403` · `404` |
