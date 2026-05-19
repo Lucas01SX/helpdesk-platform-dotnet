@@ -37,6 +37,22 @@ public sealed class ObservabilityTests(HelpdeskWebAppFactory factory)
         Guid.TryParse(values!.First(), out _).Should().BeTrue();
     }
 
+    [Fact]
+    public async Task CorrelationId_Should_Reject_Oversized_Header_And_Generate_New_Id()
+    {
+        var oversized = new string('x', 65);
+        var request = new HttpRequestMessage(HttpMethod.Get, "/health");
+        request.Headers.Add("X-Correlation-Id", oversized);
+
+        var response = await _client.SendAsync(request);
+
+        response.Headers.TryGetValues("X-Correlation-Id", out var values).Should().BeTrue();
+        var returned = values!.First();
+        returned.Should().NotBe(oversized);
+        returned.Length.Should().BeLessThanOrEqualTo(64);
+        Guid.TryParse(returned, out _).Should().BeTrue();
+    }
+
     // ── correlationId in response bodies ─────────────────────────────────────
 
     [Fact]

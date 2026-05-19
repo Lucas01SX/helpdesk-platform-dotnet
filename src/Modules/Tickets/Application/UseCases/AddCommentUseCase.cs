@@ -6,6 +6,7 @@ using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
+using Helpdesk.Shared.Security;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
@@ -27,7 +28,7 @@ public sealed class AddCommentUseCase(
         if (ticket is null)
             return TicketAppErrors.TicketNotFound;
 
-        var isCustomer = request.AuthorRole == "Customer";
+        var isCustomer = request.AuthorRole == RoleNames.Customer;
 
         if (isCustomer && ticket.CustomerId != request.AuthorId)
             return TicketAppErrors.TicketNotFound;

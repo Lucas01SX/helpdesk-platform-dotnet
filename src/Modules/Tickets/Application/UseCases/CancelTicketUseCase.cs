@@ -5,6 +5,7 @@ using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
+using Helpdesk.Shared.Security;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
@@ -21,7 +22,7 @@ public sealed class CancelTicketUseCase(
         var now = clock.UtcNow;
         Result domainResult;
 
-        if (request.ActorRole == "Manager")
+        if (request.ActorRole == RoleNames.Manager)
             domainResult = ticket.CancelByManager(request.ActorId, request.Reason, now);
         else
         {

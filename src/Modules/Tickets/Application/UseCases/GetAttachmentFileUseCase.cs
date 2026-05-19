@@ -3,6 +3,7 @@ using Helpdesk.Modules.Tickets.Domain.Enums;
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Results;
+using Helpdesk.Shared.Security;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
@@ -17,7 +18,7 @@ public sealed class GetAttachmentFileUseCase(
         if (attachment is null)
             return TicketAppErrors.AttachmentNotFound;
 
-        if (actorRole == "Customer" && attachment.Visibility == AttachmentVisibility.Internal)
+        if (actorRole == RoleNames.Customer && attachment.Visibility == AttachmentVisibility.Internal)
             return TicketAppErrors.AttachmentDownloadForbidden;
 
         var stream = await storage.GetAsync(attachment.StoragePath, ct);

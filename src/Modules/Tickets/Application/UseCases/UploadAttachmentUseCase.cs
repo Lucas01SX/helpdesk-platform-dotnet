@@ -6,6 +6,7 @@ using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
+using Helpdesk.Shared.Security;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
@@ -52,7 +53,7 @@ public sealed class UploadAttachmentUseCase(
         if (ticket is null)
             return TicketAppErrors.TicketNotFound;
 
-        var isCustomer = request.UploaderRole == "Customer";
+        var isCustomer = request.UploaderRole == RoleNames.Customer;
 
         if (isCustomer && ticket.CustomerId != request.UploadedBy)
             return TicketAppErrors.TicketNotFound;

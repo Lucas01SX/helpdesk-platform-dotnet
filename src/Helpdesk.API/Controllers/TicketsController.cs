@@ -128,6 +128,9 @@ public sealed class TicketsController(
     }
 
     // POST /api/tickets/{id}/attachments
+    // Note: [RequestSizeLimit] is intentionally omitted. ASP.NET Core would return an
+    // unhandled 413 (bypassing GlobalExceptionHandlerMiddleware) instead of the expected
+    // 400 from the use case size check. Size enforcement happens inside UploadAttachmentUseCase.
     [HttpPost("{id:guid}/attachments")]
     public async Task<IActionResult> UploadAttachment(
         Guid id, IFormFile? file, [FromQuery] string visibility = "Public", CancellationToken ct = default)
