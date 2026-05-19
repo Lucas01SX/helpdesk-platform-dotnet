@@ -156,7 +156,7 @@ public sealed class AuditTrailTests(HelpdeskWebAppFactory factory)
         var createBody = await createResp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         var ticketId = createBody.GetProperty("data").GetProperty("ticketId").GetString()!;
 
-        var assignReq = new HttpRequestMessage(HttpMethod.Post, $"/api/tickets/{ticketId}/assignments")
+        var assignReq = new HttpRequestMessage(HttpMethod.Post, $"/api/tickets/{ticketId}/assign")
         {
             Content = JsonContent.Create(new { agentId })
         };

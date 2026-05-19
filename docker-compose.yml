@@ -1,6 +1,7 @@
 services:
   api:
     build: .
+    restart: unless-stopped
     ports:
       - "5000:8080"
     environment:

@@ -85,14 +85,14 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
     private async Task AssignTicketAsync(string agentToken, Guid ticketId)
     {
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/assignments", null);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/assign", null);
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
     private async Task ResolveTicketAsync(string agentToken, Guid ticketId)
     {
         using var client = AuthClient(agentToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolution",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
             new { description = "Resolved by agent." });
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -271,7 +271,7 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
         factory.TimeProvider.Advance(TimeSpan.FromHours(1));
 
         using var client = AuthClient(managerToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = "Duplicate request, closing." });
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -296,7 +296,7 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
         factory.TimeProvider.Advance(TimeSpan.FromMinutes(30));
 
         using var client = AuthClient(customerToken);
-        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancellation",
+        var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
             new { reason = (string?)null });
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
