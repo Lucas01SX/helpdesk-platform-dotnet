@@ -7,6 +7,7 @@ using Helpdesk.Modules.Identity.Application.Interfaces;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
@@ -16,17 +17,26 @@ public sealed class LoginUseCase(
     ISessionRepository sessionRepository,
     IPasswordHasher passwordHasher,
     IJwtTokenService jwtTokenService,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(7);
     private const int MaxActiveSessions = 5;
+
+    // Valid-format Argon2id placeholder (base64(16-byte salt).base64(32-byte hash)).
+    // Used when the email does not exist so Argon2id always runs, keeping response
+    // time constant and preventing timing-based email enumeration.
+    private const string DummyHash =
+        "AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
     public async Task<Result<AuthResponse>> ExecuteAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userRepository.FindByEmailAsync(request.Email, ct);
 
-        // Enumeration protection: same error for "not found" and "wrong password"
-        if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
+        var hashToVerify = user?.PasswordHash ?? DummyHash;
+        var passwordValid = passwordHasher.Verify(request.Password, hashToVerify);
+
+        if (user is null || !passwordValid)
             return IdentityErrors.InvalidCredentials;
 
         if (!user.EmailVerified)
@@ -59,6 +69,9 @@ public sealed class LoginUseCase(
         await sessionRepository.SaveChangesAsync(ct);
 
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.Role, session.Id);
+
+        await auditService.RecordAsync("UserLoggedIn", "Identity", user.Id, user.Id,
+            new { user.Email, SessionId = session.Id }, ct);
 
         return new AuthResponse(accessToken, rawToken, session.ExpiresAt);
     }

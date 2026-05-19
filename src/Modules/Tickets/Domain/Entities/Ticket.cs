@@ -231,6 +231,8 @@ public sealed class Ticket
         SlaUnassignedPenaltyCount++;
     }
 
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
     private static DateTime ComputeSlaDue(TicketPriority priority, DateTime now) => priority switch
     {
         TicketPriority.High => now.AddHours(1),

@@ -1,13 +1,15 @@
 using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
 
 public sealed class VerifyEmailUseCase(
     IUserRepository userRepository,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result> ExecuteAsync(string rawToken, CancellationToken ct = default)
     {
@@ -25,6 +27,9 @@ public sealed class VerifyEmailUseCase(
         token.MarkAsUsed();
         user.VerifyEmail(now);
         await userRepository.SaveChangesAsync(ct);
+
+        await auditService.RecordAsync("EmailVerified", "Identity", user.Id, user.Id,
+            new { user.Email }, ct);
 
         return Result.Ok();
     }

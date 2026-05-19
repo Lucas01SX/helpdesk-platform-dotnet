@@ -2,7 +2,10 @@ using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Helpdesk.API;
+using Helpdesk.API.Audit;
+using Helpdesk.API.Controllers;
 using Helpdesk.API.Middleware;
+using Helpdesk.Shared.Audit;
 using Helpdesk.API.Persistence;
 using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity;
@@ -11,6 +14,7 @@ using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -24,18 +28,47 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
     builder.Host.UseSerilog((ctx, services, config) => config
         .ReadFrom.Configuration(ctx.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    builder.Services.AddControllers().AddJsonOptions(o =>
-    {
-        o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-    });
+    builder.Services.AddControllers()
+        .AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        })
+        .ConfigureApiBehaviorOptions(options =>
+        {
+            options.InvalidModelStateResponseFactory = ctx =>
+            {
+                var correlationId = ctx.HttpContext.Items["CorrelationId"] as string
+                    ?? ctx.HttpContext.TraceIdentifier;
+                var response = new ApiFailureResponse(
+                    false,
+                    new ApiErrorDetail("validation_error", "One or more validation errors occurred."),
+                    correlationId,
+                    DateTime.UtcNow);
+                return new BadRequestObjectResult(response);
+            };
+        });
     builder.Services.AddOpenApi();
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+        {
+            policy
+                .WithOrigins("https://lucas01sx.github.io", "http://localhost:4200")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    });
 
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
@@ -44,6 +77,7 @@ try
     builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+    builder.Services.AddSingleton<IAuditService, AuditService>();
 
     builder.Services.AddIdentityModule(builder.Configuration);
     builder.Services.AddTicketsModule();
@@ -130,7 +164,10 @@ try
         app.MapOpenApi();
     }
 
+    app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+    app.UseCorrelationId();
     app.UseSecurityHeaders();
+    app.UseCors();
     app.UseHttpsRedirection();
     app.UseSerilogRequestLogging();
     if (!app.Environment.IsEnvironment("Test"))
@@ -138,6 +175,25 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+
+    app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
+    {
+        try
+        {
+            await db.Database.CanConnectAsync(ct);
+            return Results.Ok(new { status = "healthy", database = "connected", timestamp = DateTime.UtcNow });
+        }
+        catch
+        {
+            return Results.Json(
+                new { status = "unhealthy", database = "unavailable", timestamp = DateTime.UtcNow },
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }).AllowAnonymous();
+
+    if (app.Environment.IsEnvironment("Test"))
+        app.MapGet("/test/throw", (HttpContext _) => throw new InvalidOperationException("Test exception from M7"))
+           .AllowAnonymous();
 
     app.Run();
 }

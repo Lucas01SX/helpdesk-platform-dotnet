@@ -2,6 +2,7 @@ using Helpdesk.Modules.Identity.Application.Interfaces;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
@@ -9,7 +10,8 @@ namespace Helpdesk.Modules.Identity.Application.UseCases;
 public sealed class RequestPasswordResetUseCase(
     IUserRepository userRepository,
     IEmailService emailService,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task ExecuteAsync(string email, CancellationToken ct = default)
     {
@@ -28,5 +30,7 @@ public sealed class RequestPasswordResetUseCase(
         await userRepository.SaveChangesAsync(ct);
 
         await emailService.SendPasswordResetAsync(user.Email, rawToken, ct);
+        await auditService.RecordAsync("PasswordResetRequested", "Identity", user.Id, null,
+            new { user.Email }, ct);
     }
 }

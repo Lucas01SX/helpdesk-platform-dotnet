@@ -6,6 +6,7 @@ using Helpdesk.Modules.SLA.Domain.Interfaces;
 using Helpdesk.Modules.Tickets.Domain.Entities;
 using Helpdesk.Modules.Tickets.Domain.Enums;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Helpdesk.API.SLA;
@@ -13,7 +14,8 @@ namespace Helpdesk.API.SLA;
 public sealed class SlaBreachProcessor(
     AppDbContext db,
     ISlaScoreRepository scoreRepository,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     private const int AutoCancelHoursAfterAutoAssign = 10;
     private const string AutoCancelReason =
@@ -80,7 +82,15 @@ public sealed class SlaBreachProcessor(
             ticket.MarkSlaBreached(now);
 
         if (newlyBreached.Count > 0)
+        {
             await db.SaveChangesAsync(ct);
+            foreach (var ticket in newlyBreached)
+            {
+                foreach (var evt in ticket.DomainEvents)
+                    await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, null, evt, ct);
+                ticket.ClearDomainEvents();
+            }
+        }
     }
 
     // 3 — Apply -5 penalty every 2 hours for unassigned breached tickets
@@ -135,6 +145,12 @@ public sealed class SlaBreachProcessor(
             ticket.AutoAssign(managerId.Value, "Auto-assigned: Manager with lowest active ticket count.", now);
 
         await db.SaveChangesAsync(ct);
+        foreach (var ticket in candidates)
+        {
+            foreach (var evt in ticket.DomainEvents)
+                await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, null, evt, ct);
+            ticket.ClearDomainEvents();
+        }
     }
 
     // 5 — Auto-cancel tickets that have been auto-assigned for 10h without resolution
@@ -154,7 +170,15 @@ public sealed class SlaBreachProcessor(
             ticket.AutoCancel(AutoCancelReason, now);
 
         if (timedOut.Count > 0)
+        {
             await db.SaveChangesAsync(ct);
+            foreach (var ticket in timedOut)
+            {
+                foreach (var evt in ticket.DomainEvents)
+                    await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, null, evt, ct);
+                ticket.ClearDomainEvents();
+            }
+        }
     }
 
     private async Task<SlaMonthlyScore> GetOrCreateCurrentScoreAsync(DateTime now, CancellationToken ct)

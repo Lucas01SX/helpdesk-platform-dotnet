@@ -7,6 +7,7 @@ using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Enums;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
@@ -15,7 +16,8 @@ public sealed class RegisterUseCase(
     IUserRepository userRepository,
     IPasswordHasher passwordHasher,
     IEmailService emailService,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result<Guid>> ExecuteAsync(RegisterRequest request, CancellationToken ct = default)
     {
@@ -35,6 +37,8 @@ public sealed class RegisterUseCase(
         await userRepository.SaveChangesAsync(ct);
 
         await emailService.SendEmailVerificationAsync(user.Email, rawToken, ct);
+        await auditService.RecordAsync("UserRegistered", "Identity", user.Id, null,
+            new { user.Email, user.Name }, ct);
 
         return user.Id;
     }

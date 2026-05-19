@@ -3,6 +3,7 @@ using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Application.Interfaces;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
@@ -11,7 +12,8 @@ public sealed class ResetPasswordUseCase(
     IUserRepository userRepository,
     ISessionRepository sessionRepository,
     IPasswordHasher passwordHasher,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result> ExecuteAsync(ResetPasswordRequest request, CancellationToken ct = default)
     {
@@ -36,6 +38,9 @@ public sealed class ResetPasswordUseCase(
 
         await userRepository.SaveChangesAsync(ct);
         await sessionRepository.SaveChangesAsync(ct);
+
+        await auditService.RecordAsync("PasswordResetApplied", "Identity", user.Id, user.Id,
+            new { user.Email }, ct);
 
         return Result.Ok();
     }
