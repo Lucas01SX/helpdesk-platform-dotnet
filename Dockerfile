@@ -21,5 +21,6 @@ RUN dotnet publish "Helpdesk.API.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+RUN mkdir -p /app/uploads && chown app:app /app/uploads
 USER app
 ENTRYPOINT ["dotnet", "Helpdesk.API.dll"]

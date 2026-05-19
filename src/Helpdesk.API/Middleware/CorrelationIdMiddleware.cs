@@ -9,8 +9,10 @@ public static class CorrelationIdMiddleware
     public static IApplicationBuilder UseCorrelationId(this IApplicationBuilder app) =>
         app.Use(async (context, next) =>
         {
-            var correlationId = context.Request.Headers[HeaderName].FirstOrDefault()
-                ?? Guid.NewGuid().ToString();
+            var raw = context.Request.Headers[HeaderName].FirstOrDefault();
+            var correlationId = (!string.IsNullOrWhiteSpace(raw) && raw.Length <= 64)
+                ? raw
+                : Guid.NewGuid().ToString();
 
             context.Items["CorrelationId"] = correlationId;
             context.Response.Headers[HeaderName] = correlationId;

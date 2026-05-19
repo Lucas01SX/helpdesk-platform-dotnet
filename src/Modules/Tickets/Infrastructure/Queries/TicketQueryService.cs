@@ -1,6 +1,7 @@
 using Helpdesk.Modules.Tickets.Application.Contracts.Responses;
 using Helpdesk.Modules.Tickets.Domain.Entities;
 using Helpdesk.Modules.Tickets.Domain.Enums;
+using Helpdesk.Shared.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace Helpdesk.Modules.Tickets.Infrastructure.Queries;
@@ -16,7 +17,7 @@ public sealed class TicketQueryService(DbContext context)
     {
         var query = _tickets.AsNoTracking();
 
-        if (actorRole == "Customer")
+        if (actorRole == RoleNames.Customer)
             query = query.Where(t => t.CustomerId == actorId);
 
         return await query
@@ -32,7 +33,7 @@ public sealed class TicketQueryService(DbContext context)
     {
         var query = _tickets.AsNoTracking().Where(t => t.Id == id);
 
-        if (actorRole == "Customer")
+        if (actorRole == RoleNames.Customer)
             query = query.Where(t => t.CustomerId == actorId);
 
         return await query
@@ -48,7 +49,7 @@ public sealed class TicketQueryService(DbContext context)
     {
         var query = _tickets.AsNoTracking().Where(t => t.Id == ticketId);
 
-        if (actorRole == "Customer")
+        if (actorRole == RoleNames.Customer)
             query = query.Where(t => t.CustomerId == actorId);
 
         return await query.AnyAsync(ct);
@@ -57,7 +58,7 @@ public sealed class TicketQueryService(DbContext context)
     public async Task<IReadOnlyList<CommentResponse>> ListCommentsAsync(
         Guid ticketId, Guid actorId, string actorRole, CancellationToken ct = default)
     {
-        var visibilityFilter = actorRole == "Customer"
+        var visibilityFilter = actorRole == RoleNames.Customer
             ? CommentVisibility.Public
             : (CommentVisibility?)null;
 
@@ -76,7 +77,7 @@ public sealed class TicketQueryService(DbContext context)
     public async Task<IReadOnlyList<AttachmentResponse>> ListAttachmentsAsync(
         Guid ticketId, Guid actorId, string actorRole, CancellationToken ct = default)
     {
-        var visibilityFilter = actorRole == "Customer"
+        var visibilityFilter = actorRole == RoleNames.Customer
             ? AttachmentVisibility.Public
             : (AttachmentVisibility?)null;
 
