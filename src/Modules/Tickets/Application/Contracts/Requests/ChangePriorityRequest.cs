@@ -1,8 +1,9 @@
+using System.Text.Json.Serialization;
 using Helpdesk.Modules.Tickets.Domain.Enums;
 
 namespace Helpdesk.Modules.Tickets.Application.Contracts.Requests;
 
 public sealed record ChangePriorityRequest(
     TicketPriority Priority,
-    Guid TicketId = default,
-    Guid ActorId = default);
+    [property: JsonIgnore] Guid TicketId = default,
+    [property: JsonIgnore] Guid ActorId = default);

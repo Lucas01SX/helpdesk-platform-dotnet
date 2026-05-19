@@ -1,8 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace Helpdesk.Modules.Tickets.Application.Contracts.Requests;
 
 public sealed record AddCommentRequest(
     string Content,
     string Visibility = "Public",
-    Guid TicketId = default,
-    Guid AuthorId = default,
-    string AuthorRole = "");
+    [property: JsonIgnore] Guid TicketId = default,
+    [property: JsonIgnore] Guid AuthorId = default,
+    [property: JsonIgnore] string AuthorRole = "");
