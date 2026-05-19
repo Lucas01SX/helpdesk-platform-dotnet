@@ -16,9 +16,12 @@ using Helpdesk.Shared.Abstractions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -57,7 +60,40 @@ try
                 return new BadRequestObjectResult(response);
             };
         });
-    builder.Services.AddOpenApi();
+    builder.Services.AddOpenApi(options =>
+    {
+        options.AddDocumentTransformer((document, context, ct) =>
+        {
+            document.Info = new OpenApiInfo
+            {
+                Title = "Helpdesk Platform API",
+                Version = "v1",
+                Description = "Helpdesk ticket management API — portfolio project demonstrating Clean Architecture with .NET 10."
+            };
+            document.Components ??= new OpenApiComponents();
+            if (document.Components.SecuritySchemes is null)
+                document.Components.SecuritySchemes = new Dictionary<string, IOpenApiSecurityScheme>();
+            document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                Description = "JWT access token obtained from POST /api/auth/sessions."
+            };
+
+            var bearerRef = new OpenApiSecuritySchemeReference("Bearer", document);
+            var securityRequirement = new OpenApiSecurityRequirement { [bearerRef] = [] };
+
+            foreach (var path in document.Paths.Values)
+                foreach (var operation in (path.Operations ?? []).Values)
+                {
+                    operation.Security ??= [];
+                    operation.Security.Add(securityRequirement);
+                }
+
+            return Task.CompletedTask;
+        });
+    });
 
     builder.Services.AddCors(options =>
     {
@@ -163,6 +199,11 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();
+        app.MapScalarApiReference(options =>
+        {
+            options.Title = "Helpdesk Platform API";
+            options.DefaultHttpClient = new(ScalarTarget.Shell, ScalarClient.Curl);
+        });
     }
 
     app.UseForwardedHeaders(new ForwardedHeadersOptions
