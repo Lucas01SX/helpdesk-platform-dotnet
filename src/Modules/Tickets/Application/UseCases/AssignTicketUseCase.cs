@@ -1,11 +1,15 @@
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
-public sealed class AssignTicketUseCase(ITicketRepository repository, IDateTimeProvider clock)
+public sealed class AssignTicketUseCase(
+    ITicketRepository repository,
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result> ExecuteAsync(Guid ticketId, Guid actorId, CancellationToken ct = default)
     {
@@ -16,6 +20,11 @@ public sealed class AssignTicketUseCase(ITicketRepository repository, IDateTimeP
         if (result.IsFailure) return result;
 
         await repository.SaveChangesAsync(ct);
+
+        foreach (var evt in ticket.DomainEvents)
+            await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, actorId, evt, ct);
+        ticket.ClearDomainEvents();
+
         return Result.Ok();
     }
 }

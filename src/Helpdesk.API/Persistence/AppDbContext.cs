@@ -1,3 +1,4 @@
+using Helpdesk.API.Audit;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Notifications;
 using Helpdesk.Modules.SLA.Domain.Entities;
@@ -10,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfiguration(new AuditEventConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(TicketsModule.Assembly);
         modelBuilder.ApplyConfigurationsFromAssembly(IdentityModule.Assembly);
         modelBuilder.ApplyConfigurationsFromAssembly(NotificationsModule.Assembly);

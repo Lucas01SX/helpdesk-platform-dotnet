@@ -4,6 +4,7 @@ using Helpdesk.Modules.Tickets.Domain.Enums;
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
@@ -12,7 +13,8 @@ public sealed class UploadAttachmentUseCase(
     ITicketRepository ticketRepository,
     ITicketAttachmentRepository attachmentRepository,
     IFileStorageService storage,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     private const long MaxFileSizeBytes = 10L * 1024 * 1024;
 
@@ -48,6 +50,9 @@ public sealed class UploadAttachmentUseCase(
 
         await attachmentRepository.AddAsync(attachment, ct);
         await attachmentRepository.SaveChangesAsync(ct);
+
+        await auditService.RecordAsync("AttachmentAdded", "Ticket", request.TicketId, request.UploadedBy,
+            new { attachment.Id, attachment.FileName, attachment.ContentType }, ct);
 
         return attachment.Id;
     }

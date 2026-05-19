@@ -1,12 +1,17 @@
 using Helpdesk.Modules.Tickets.Application.Contracts.Requests;
+using Helpdesk.Modules.Tickets.Domain.Entities;
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
-public sealed class CancelTicketUseCase(ITicketRepository repository, IDateTimeProvider clock)
+public sealed class CancelTicketUseCase(
+    ITicketRepository repository,
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result> ExecuteAsync(CancelTicketRequest request, CancellationToken ct = default)
     {
@@ -14,21 +19,25 @@ public sealed class CancelTicketUseCase(ITicketRepository repository, IDateTimeP
         if (ticket is null) return TicketAppErrors.TicketNotFound;
 
         var now = clock.UtcNow;
+        Result domainResult;
 
         if (request.ActorRole == "Manager")
-            return await ApplyAndSaveAsync(ticket.CancelByManager(request.ActorId, request.Reason, now), ct);
+            domainResult = ticket.CancelByManager(request.ActorId, request.Reason, now);
+        else
+        {
+            if (ticket.CustomerId != request.ActorId)
+                return TicketAppErrors.Forbidden;
+            domainResult = ticket.CancelByCustomer(request.ActorId, request.Reason, now);
+        }
 
-        // Customer: must be the ticket creator
-        if (ticket.CustomerId != request.ActorId)
-            return TicketAppErrors.Forbidden;
-
-        return await ApplyAndSaveAsync(ticket.CancelByCustomer(request.ActorId, request.Reason, now), ct);
-    }
-
-    private async Task<Result> ApplyAndSaveAsync(Result domainResult, CancellationToken ct)
-    {
         if (domainResult.IsFailure) return domainResult;
+
         await repository.SaveChangesAsync(ct);
+
+        foreach (var evt in ticket.DomainEvents)
+            await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, request.ActorId, evt, ct);
+        ticket.ClearDomainEvents();
+
         return Result.Ok();
     }
 }

@@ -4,6 +4,7 @@ using Helpdesk.Modules.Identity.Application.Interfaces;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Identity.Application.UseCases;
@@ -12,7 +13,8 @@ public sealed class RefreshTokenUseCase(
     IUserRepository userRepository,
     ISessionRepository sessionRepository,
     IJwtTokenService jwtTokenService,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(7);
 
@@ -59,6 +61,9 @@ public sealed class RefreshTokenUseCase(
         await sessionRepository.SaveChangesAsync(ct);
 
         var accessToken = jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.Role, newSession.Id);
+
+        await auditService.RecordAsync("TokenRefreshed", "Identity", user.Id, user.Id,
+            new { OldSessionId = session.Id, NewSessionId = newSession.Id }, ct);
 
         return new AuthResponse(accessToken, newRawToken, newSession.ExpiresAt);
     }

@@ -4,6 +4,7 @@ using Helpdesk.Modules.Tickets.Domain.Enums;
 using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
@@ -11,7 +12,8 @@ namespace Helpdesk.Modules.Tickets.Application.UseCases;
 public sealed class AddCommentUseCase(
     ITicketRepository ticketRepository,
     ITicketCommentRepository commentRepository,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    IAuditService auditService)
 {
     public async Task<Result<Guid>> ExecuteAsync(AddCommentRequest request, CancellationToken ct = default)
     {
@@ -41,6 +43,9 @@ public sealed class AddCommentUseCase(
 
         await commentRepository.AddAsync(comment, ct);
         await commentRepository.SaveChangesAsync(ct);
+
+        await auditService.RecordAsync("CommentAdded", "Ticket", request.TicketId, request.AuthorId,
+            new { comment.Id, request.Visibility }, ct);
 
         return comment.Id;
     }
