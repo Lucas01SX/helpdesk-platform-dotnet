@@ -572,6 +572,40 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
     }
 
     [Fact]
+    public async Task ListAttachments_Should_Return_404_When_Ticket_Not_Found()
+    {
+        var (agentToken, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
+
+        using var client = AuthClient(agentToken);
+        var response = await client.GetAsync($"/api/tickets/{Guid.NewGuid()}/attachments");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    // ── GET /api/tickets/{id}/attachments/{attachmentId} — IDOR ─────────────
+
+    [Fact]
+    public async Task DownloadAttachment_Should_Return_404_When_Customer_Downloads_Another_Customers_Attachment()
+    {
+        var (customerAToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (customerBToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerAToken);
+
+        using var agentClientA = AuthClient(customerAToken);
+        var uploadResp = await agentClientA.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent("public data", "public.txt"));
+        var uploadBody = await uploadResp.Content.ReadFromJsonAsync<JsonElement>();
+        var attachmentId = uploadBody.GetProperty("data").GetProperty("attachmentId").GetString()!;
+
+        using var clientB = AuthClient(customerBToken);
+        var response = await clientB.GetAsync(
+            $"/api/tickets/{ticketId}/attachments/{attachmentId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task UploadAttachment_Should_Store_File_With_Internal_Name_Only()
     {
         var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);

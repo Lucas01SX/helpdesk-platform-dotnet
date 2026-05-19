@@ -9,6 +9,7 @@ namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
 public sealed class GetAttachmentFileUseCase(
     ITicketAttachmentRepository attachmentRepository,
+    ITicketRepository ticketRepository,
     IFileStorageService storage)
 {
     public async Task<Result<AttachmentFileResponse>> ExecuteAsync(
@@ -17,6 +18,13 @@ public sealed class GetAttachmentFileUseCase(
         var attachment = await attachmentRepository.FindByIdAsync(attachmentId, ct);
         if (attachment is null)
             return TicketAppErrors.AttachmentNotFound;
+
+        if (actorRole == RoleNames.Customer)
+        {
+            var ticket = await ticketRepository.FindByIdAsync(attachment.TicketId, ct);
+            if (ticket is null || ticket.CustomerId != actorId)
+                return TicketAppErrors.AttachmentNotFound;
+        }
 
         if (actorRole == RoleNames.Customer && attachment.Visibility == AttachmentVisibility.Internal)
             return TicketAppErrors.AttachmentDownloadForbidden;
