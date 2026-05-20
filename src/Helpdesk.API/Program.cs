@@ -99,8 +99,12 @@ try
     {
         options.AddDefaultPolicy(policy =>
         {
+            var origins = builder.Environment.IsProduction()
+                ? ["https://lucas01sx.github.io"]
+                : (string[])["https://lucas01sx.github.io", "http://localhost:4200"];
+
             policy
-                .WithOrigins("https://lucas01sx.github.io", "http://localhost:4200")
+                .WithOrigins(origins)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
