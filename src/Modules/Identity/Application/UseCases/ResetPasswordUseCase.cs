@@ -1,6 +1,7 @@
 using Helpdesk.Modules.Identity.Application.Contracts.Requests;
 using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Application.Interfaces;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
@@ -17,7 +18,7 @@ public sealed class ResetPasswordUseCase(
 {
     public async Task<Result> ExecuteAsync(ResetPasswordRequest request, CancellationToken ct = default)
     {
-        var tokenHash = RegisterUseCase.HashToken(request.Token);
+        var tokenHash = TokenHelper.HashToken(request.Token);
         var resetToken = await userRepository.FindPasswordResetTokenByHashAsync(tokenHash, ct);
 
         var now = clock.UtcNow;

@@ -1,3 +1,4 @@
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
@@ -12,7 +13,7 @@ public sealed class LogoutUseCase(
 {
     public async Task<Result> ExecuteAsync(string rawToken, CancellationToken ct = default)
     {
-        var tokenHash = RegisterUseCase.HashToken(rawToken);
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var session = await sessionRepository.FindByTokenHashAsync(tokenHash, ct);
 
         if (session is null || session.RevokedAt is not null)

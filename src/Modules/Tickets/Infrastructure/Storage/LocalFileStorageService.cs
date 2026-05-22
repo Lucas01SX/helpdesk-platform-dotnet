@@ -25,9 +25,16 @@ internal sealed class LocalFileStorageService(IConfiguration configuration) : IF
 
     public async Task<Stream?> GetAsync(string storagePath, CancellationToken ct = default)
     {
-        if (!File.Exists(storagePath))
+        // Prevent path traversal: reject any path that escapes the configured base directory.
+        // SaveAsync always writes under BasePath, so a legitimate path always starts here.
+        var resolvedPath = Path.GetFullPath(storagePath);
+        var resolvedBase = Path.GetFullPath(BasePath) + Path.DirectorySeparatorChar;
+        if (!resolvedPath.StartsWith(resolvedBase, StringComparison.Ordinal))
             return null;
 
-        return await Task.FromResult<Stream?>(File.OpenRead(storagePath));
+        if (!File.Exists(resolvedPath))
+            return null;
+
+        return await Task.FromResult<Stream?>(File.OpenRead(resolvedPath));
     }
 }

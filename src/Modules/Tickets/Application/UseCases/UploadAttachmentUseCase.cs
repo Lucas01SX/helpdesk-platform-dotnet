@@ -53,6 +53,9 @@ public sealed class UploadAttachmentUseCase(
         if (ticket is null)
             return TicketAppErrors.TicketNotFound;
 
+        if (ticket.Status is TicketStatus.Resolved or TicketStatus.Cancelled)
+            return TicketAppErrors.AttachmentTicketClosed;
+
         var isCustomer = request.UploaderRole == RoleNames.Customer;
 
         if (isCustomer && ticket.CustomerId != request.UploadedBy)

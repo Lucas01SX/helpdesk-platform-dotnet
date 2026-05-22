@@ -1,4 +1,5 @@
 using Helpdesk.Modules.Identity.Application.Interfaces;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
@@ -22,8 +23,8 @@ public sealed class RequestPasswordResetUseCase(
         var now = clock.UtcNow;
         await userRepository.RevokePasswordResetTokensAsync(user.Id, ct);
 
-        var rawToken = RegisterUseCase.GenerateSecureToken();
-        var tokenHash = RegisterUseCase.HashToken(rawToken);
+        var rawToken = TokenHelper.GenerateSecureToken();
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var resetToken = PasswordResetToken.Create(user.Id, tokenHash, now);
 
         await userRepository.AddPasswordResetTokenAsync(resetToken, ct);

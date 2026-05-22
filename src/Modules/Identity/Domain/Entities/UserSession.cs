@@ -40,6 +40,7 @@ public sealed class UserSession
 
     public void Revoke(DateTime now)
     {
+        if (RevokedAt.HasValue) return;
         RevokedAt = now;
     }
 }

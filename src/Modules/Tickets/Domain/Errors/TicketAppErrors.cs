@@ -45,4 +45,7 @@ public static class TicketAppErrors
     public static readonly Error AttachmentFileTypeNotAllowed =
         new("attachment.file_type_not_allowed",
             "File type is not allowed. Accepted formats: jpg, jpeg, png, gif, webp, pdf, doc, docx, txt, csv, xlsx, log.");
+
+    public static readonly Error AttachmentTicketClosed =
+        new("attachment.ticket_closed", "Attachments cannot be uploaded to resolved or cancelled tickets.");
 }

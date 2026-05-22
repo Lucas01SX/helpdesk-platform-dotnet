@@ -1,8 +1,7 @@
-using System.Security.Cryptography;
-using System.Text;
 using Helpdesk.Modules.Identity.Application.Contracts.Requests;
 using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Application.Interfaces;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Enums;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
@@ -28,8 +27,8 @@ public sealed class RegisterUseCase(
         var passwordHash = passwordHasher.Hash(request.Password);
         var user = User.Create(request.Email, request.Name, passwordHash, UserRole.Customer, now);
 
-        var rawToken = GenerateSecureToken();
-        var tokenHash = HashToken(rawToken);
+        var rawToken = TokenHelper.GenerateSecureToken();
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var verificationToken = EmailVerificationToken.Create(user.Id, tokenHash, now);
 
         await userRepository.AddAsync(user, ct);
@@ -41,17 +40,5 @@ public sealed class RegisterUseCase(
             new { user.Email, user.Name }, ct);
 
         return user.Id;
-    }
-
-    internal static string GenerateSecureToken()
-    {
-        var bytes = RandomNumberGenerator.GetBytes(32);
-        return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").TrimEnd('=');
-    }
-
-    internal static string HashToken(string rawToken)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(rawToken));
-        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 }
