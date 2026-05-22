@@ -207,6 +207,7 @@ public sealed class TicketsController(
         {
             // 404
             "ticket.not_found"
+            or "ticket.assignee_not_found"
                 => NotFound(Failure(result.Error)),
 
             // 403 — actor is not authorized for this operation

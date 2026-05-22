@@ -14,6 +14,7 @@ using Helpdesk.Modules.Notifications;
 using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
@@ -34,7 +35,11 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.AddServerHeader = false;
+        options.Limits.MaxRequestBodySize = 11 * 1024 * 1024; // 10 MB file + metadata headroom
+    });
 
     builder.Host.UseSerilog((ctx, services, config) => config
         .ReadFrom.Configuration(ctx.Configuration)
@@ -251,7 +256,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    app.MapMetrics("/metrics").AllowAnonymous();
+    app.MapMetrics("/metrics").RequireAuthorization(p => p.RequireRole(RoleNames.Manager));
 
     app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
     {

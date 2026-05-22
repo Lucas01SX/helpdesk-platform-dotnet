@@ -17,6 +17,9 @@ public sealed class TransferTicketUseCase(
         var ticket = await repository.FindByIdAsync(request.TicketId, ct);
         if (ticket is null) return TicketAppErrors.TicketNotFound;
 
+        var isAssignable = await repository.IsAssignableUserAsync(request.NewAssigneeId, ct);
+        if (!isAssignable) return TicketAppErrors.AssigneeNotFound;
+
         var result = ticket.Transfer(request.ActorId, request.NewAssigneeId, request.Reason, clock.UtcNow);
         if (result.IsFailure) return result;
 

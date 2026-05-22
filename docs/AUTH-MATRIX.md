@@ -27,7 +27,7 @@ Role values from the JWT payload: `Customer`, `Agent`, `Manager`.
 | `POST /api/tickets` | ✅ own | ❌ | ❌ | Only customers can create |
 | `GET /api/tickets` | ✅ own | ✅ all | ✅ all | Customers see only their tickets; paginated (page, limit) |
 | `GET /api/tickets/:id` | ✅ own | ✅ | ✅ | Customers restricted to own ticket |
-| `POST /api/tickets/:id/assign` | ❌ | ❌ | ✅ | Manager only |
+| `POST /api/tickets/:id/assign` | ❌ | ✅ self | ✅ self | Self-assign only — actor becomes the assignee |
 | `POST /api/tickets/:id/transfer` | ❌ | ✅ current-assignee | ✅ current-assignee | Must be currently assigned |
 | `POST /api/tickets/:id/resolve` | ❌ | ✅ current-assignee | ✅ current-assignee | Non-empty resolutionDescription required |
 | `POST /api/tickets/:id/cancel` | ✅ own | ❌ | ✅ | Manager must provide reason |
@@ -75,4 +75,4 @@ Role values from the JWT payload: `Customer`, `Agent`, `Manager`.
 | Endpoint | Auth required | Notes |
 |---|---|---|
 | `GET /health` | ❌ | Public — used by Kubernetes readiness probe; returns 503 if DB unreachable |
-| `GET /metrics` | ❌ | Prometheus scrape endpoint — restrict at network level in production |
+| `GET /metrics` | ✅ Manager | Prometheus scrape endpoint — requires Manager JWT |

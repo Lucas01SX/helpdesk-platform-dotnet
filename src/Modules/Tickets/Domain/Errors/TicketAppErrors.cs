@@ -7,6 +7,9 @@ public static class TicketAppErrors
     public static readonly Error TicketNotFound =
         new("ticket.not_found", "Ticket not found.");
 
+    public static readonly Error AssigneeNotFound =
+        new("ticket.assignee_not_found", "The specified assignee was not found or is not an agent/manager.");
+
     public static readonly Error Forbidden =
         new("ticket.forbidden", "You do not have permission to perform this action on this ticket.");
 
