@@ -62,5 +62,14 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .IsRequired();
 
         builder.Ignore(t => t.DomainEvents);
+
+        builder.HasIndex(t => new { t.SlaDueAt, t.SlaBreachedAt })
+               .HasDatabaseName("ix_tickets_sla_due_at_sla_breached_at");
+        builder.HasIndex(t => new { t.Status, t.SlaBreachedAt })
+               .HasDatabaseName("ix_tickets_status_sla_breached_at");
+        builder.HasIndex(t => t.CustomerId)
+               .HasDatabaseName("ix_tickets_customer_id");
+        builder.HasIndex(t => t.AssigneeId)
+               .HasDatabaseName("ix_tickets_assignee_id");
     }
 }

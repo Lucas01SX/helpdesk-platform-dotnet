@@ -475,8 +475,10 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var tickets = body.GetProperty("data").EnumerateArray().ToList();
+        var data = body.GetProperty("data");
+        var tickets = data.GetProperty("items").EnumerateArray().ToList();
         tickets.Should().HaveCount(2);
+        data.GetProperty("total").GetInt32().Should().Be(2);
     }
 
     [Fact]
@@ -494,8 +496,10 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var tickets = body.GetProperty("data").EnumerateArray().ToList();
+        var data = body.GetProperty("data");
+        var tickets = data.GetProperty("items").EnumerateArray().ToList();
         tickets.Count.Should().BeGreaterThanOrEqualTo(2);
+        data.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(2);
     }
 
     [Fact]

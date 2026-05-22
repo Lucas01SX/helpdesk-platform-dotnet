@@ -12,20 +12,26 @@ public sealed class TicketQueryService(DbContext context)
     private readonly DbSet<TicketComment> _comments = context.Set<TicketComment>();
     private readonly DbSet<TicketAttachment> _attachments = context.Set<TicketAttachment>();
 
-    public async Task<IReadOnlyList<TicketSummaryResponse>> ListAsync(
-        Guid actorId, string actorRole, CancellationToken ct = default)
+    public async Task<PagedResult<TicketSummaryResponse>> ListAsync(
+        Guid actorId, string actorRole, int page, int limit, CancellationToken ct = default)
     {
         var query = _tickets.AsNoTracking();
 
         if (actorRole == RoleNames.Customer)
             query = query.Where(t => t.CustomerId == actorId);
 
-        return await query
-            .OrderByDescending(t => t.CreatedAt)
+        var ordered = query.OrderByDescending(t => t.CreatedAt);
+
+        var total = await ordered.CountAsync(ct);
+        var items = await ordered
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .Select(t => new TicketSummaryResponse(
                 t.Id, t.Title, t.Status.ToString(), t.Priority.ToString(),
                 t.Category.ToString(), t.CustomerId, t.AssigneeId, t.CreatedAt, t.SlaDueAt))
             .ToListAsync(ct);
+
+        return new PagedResult<TicketSummaryResponse>(items, total, page, limit);
     }
 
     public async Task<TicketResponse?> GetByIdAsync(

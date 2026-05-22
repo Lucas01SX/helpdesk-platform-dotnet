@@ -6,6 +6,7 @@ using Helpdesk.Modules.Tickets.Infrastructure.Queries;
 using Helpdesk.Shared.Errors;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Helpdesk.API.Controllers;
 
@@ -86,12 +87,16 @@ public sealed class TicketsController(
         return MapResult(result);
     }
 
-    // GET /api/tickets
+    // GET /api/tickets?page=1&limit=20
     [HttpGet]
-    public async Task<IActionResult> ListTickets(CancellationToken ct)
+    public async Task<IActionResult> ListTickets(
+        [FromQuery] int page = 1, [FromQuery] int limit = 20, CancellationToken ct = default)
     {
-        var tickets = await queryService.ListAsync(ActorId, ActorRole, ct);
-        return Ok(Success(tickets));
+        if (page < 1) page = 1;
+        if (limit is < 1 or > 100) limit = 20;
+
+        var result = await queryService.ListAsync(ActorId, ActorRole, page, limit, ct);
+        return Ok(Success(result));
     }
 
     // GET /api/tickets/{id}
@@ -132,6 +137,7 @@ public sealed class TicketsController(
     // unhandled 413 (bypassing GlobalExceptionHandlerMiddleware) instead of the expected
     // 400 from the use case size check. Size enforcement happens inside UploadAttachmentUseCase.
     [HttpPost("{id:guid}/attachments")]
+    [EnableRateLimiting(RateLimitPolicies.Upload)]
     public async Task<IActionResult> UploadAttachment(
         Guid id, IFormFile? file, [FromQuery] string visibility = "Public", CancellationToken ct = default)
     {

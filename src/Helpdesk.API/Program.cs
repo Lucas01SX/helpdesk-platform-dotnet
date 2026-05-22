@@ -10,6 +10,7 @@ using Helpdesk.API.Persistence;
 using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Identity.Infrastructure.Security;
+using Helpdesk.Modules.Notifications;
 using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
@@ -21,6 +22,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Prometheus;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -123,6 +125,7 @@ try
     builder.Services.AddIdentityModule(builder.Configuration);
     builder.Services.AddTicketsModule();
     builder.Services.AddSlaModule();
+    builder.Services.AddNotificationsModule();
 
     builder.Services.AddScoped<SlaBreachProcessor>();
     builder.Services.AddHostedService<SlaBreachMonitorService>();
@@ -180,6 +183,17 @@ try
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(RateLimitPolicies.Upload, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromHours(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
             options.OnRejected = async (ctx, ct) =>
             {
                 ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -229,12 +243,15 @@ try
     app.UseSecurityHeaders();
     app.UseCors();
     app.UseHttpsRedirection();
+    app.UseHttpMetrics();
     app.UseSerilogRequestLogging();
     if (!app.Environment.IsEnvironment("Test"))
         app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+
+    app.MapMetrics("/metrics").AllowAnonymous();
 
     app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
     {
