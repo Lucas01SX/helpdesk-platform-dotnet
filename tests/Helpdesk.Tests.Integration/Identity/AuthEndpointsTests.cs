@@ -55,14 +55,14 @@ public sealed class AuthEndpointsTests(HelpdeskWebAppFactory factory)
     }
 
     [Fact]
-    public async Task Register_Should_Return_400_When_Email_Already_Registered()
+    public async Task Register_Should_Return_409_When_Email_Already_Registered()
     {
         var payload = new { email = "bob@example.com", name = "Bob", password = "Secret1@pass" };
         await _client.PostAsJsonAsync("/api/auth/register", payload);
 
         var response = await _client.PostAsJsonAsync("/api/auth/register", payload);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [Fact]

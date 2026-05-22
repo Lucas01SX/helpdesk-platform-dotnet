@@ -21,9 +21,10 @@ public sealed class AuthController(
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
         var result = await registerUseCase.ExecuteAsync(request, ct);
-        return result.IsSuccess
-            ? StatusCode(201, Success(new { userId = result.Value }))
-            : BadRequest(Failure(result.Error!));
+        if (result.IsSuccess) return StatusCode(201, Success(new { userId = result.Value }));
+        return result.Error!.Code == "identity.email_already_registered"
+            ? Conflict(Failure(result.Error))
+            : BadRequest(Failure(result.Error));
     }
 
     // POST /api/auth/sessions — creates a new session (login)
