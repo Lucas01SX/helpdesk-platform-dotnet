@@ -124,7 +124,7 @@ All tokens go in the request body or cookie — never in the URL path.
 
 | Method | Path | Description | Roles | Status codes |
 |---|---|---|---|---|
-| `POST` | `/api/auth/register` | Create a new Customer account | — | `201` · `400` |
+| `POST` | `/api/auth/register` | Create a new Customer account | — | `201` · `400` · `409` |
 | `POST` | `/api/auth/sessions` | Login — sets HttpOnly refresh token cookie | — | `200` · `401` · `429` |
 | `DELETE` | `/api/auth/sessions/current` | Logout — revokes session, clears cookie | Any | `204` |
 | `PUT` | `/api/auth/sessions/current` | Token rotation — replaces session with a new one | Any | `200` · `401` |
@@ -163,7 +163,7 @@ All tokens go in the request body or cookie — never in the URL path.
 - IDOR protection: Customer actors can only access their own tickets and attachments
 - Internal comments/attachments are hidden from Customer role
 - ForwardedHeaders middleware applied first — `X-Forwarded-For` and `X-Forwarded-Proto` honored behind reverse proxy
-- Correlation ID sanitization: client-supplied `X-Correlation-Id` values over 64 chars are rejected
+- Correlation ID sanitization: client-supplied `X-Correlation-Id` values are rejected if they exceed 64 chars or contain characters outside `[a-zA-Z0-9\-_]`
 
 ---
 

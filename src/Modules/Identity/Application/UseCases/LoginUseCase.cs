@@ -1,9 +1,8 @@
-using System.Security.Cryptography;
-using System.Text;
 using Helpdesk.Modules.Identity.Application.Contracts.Requests;
 using Helpdesk.Modules.Identity.Application.Contracts.Responses;
 using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Application.Interfaces;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
@@ -23,17 +22,14 @@ public sealed class LoginUseCase(
     private static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(7);
     private const int MaxActiveSessions = 5;
 
-    // Valid-format Argon2id placeholder (base64(16-byte salt).base64(32-byte hash)).
-    // Used when the email does not exist so Argon2id always runs, keeping response
-    // time constant and preventing timing-based email enumeration.
-    private const string DummyHash =
-        "AAAAAAAAAAAAAAAAAAAAAA==.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-
     public async Task<Result<AuthResponse>> ExecuteAsync(LoginRequest request, CancellationToken ct = default)
     {
         var user = await userRepository.FindByEmailAsync(request.Email, ct);
 
-        var hashToVerify = user?.PasswordHash ?? DummyHash;
+        // Run Argon2 even when the email doesn't exist to keep response time constant
+        // and prevent timing-based email enumeration. GetDummyHash() returns a valid
+        // hash in the same format as stored hashes, so Verify() always runs the full KDF.
+        var hashToVerify = user?.PasswordHash ?? passwordHasher.GetDummyHash();
         var passwordValid = passwordHasher.Verify(request.Password, hashToVerify);
 
         if (user is null || !passwordValid)
@@ -56,8 +52,8 @@ public sealed class LoginUseCase(
             }
         }
 
-        var rawToken = RegisterUseCase.GenerateSecureToken();
-        var tokenHash = RegisterUseCase.HashToken(rawToken);
+        var rawToken = TokenHelper.GenerateSecureToken();
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var familyId = Guid.NewGuid();
 
         var session = UserSession.Create(

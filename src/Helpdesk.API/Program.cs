@@ -210,10 +210,20 @@ try
         });
     }
 
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    // Trust X-Forwarded-For only from known private networks (RFC 1918).
+    // Without KnownNetworks, any client could spoof X-Forwarded-For and bypass IP rate limits.
+    // Docker Compose internal networks fall within 172.16.0.0/12.
+    // In production, narrow this to the specific proxy IP via KnownProxies.
+    var forwardedOptions = new ForwardedHeadersOptions
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-    });
+    };
+    forwardedOptions.KnownIPNetworks.Clear();
+    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("10.0.0.0/8"));
+    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("172.16.0.0/12"));
+    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("192.168.0.0/16"));
+    forwardedOptions.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("127.0.0.0/8"));
+    app.UseForwardedHeaders(forwardedOptions);
     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
     app.UseCorrelationId();
     app.UseSecurityHeaders();

@@ -13,6 +13,20 @@ internal sealed class Argon2PasswordHasher : IPasswordHasher
     private const int MemorySize = 65536; // 64 MB
     private const int DegreeOfParallelism = 2;
 
+    // Computed once at startup in the same format as Hash() output.
+    // Guarantees GetDummyHash() → Verify() always runs the full KDF even when
+    // the hasher format changes, preventing timing-based email enumeration gaps.
+    private static readonly string CachedDummyHash = ComputeDummyHash();
+
+    private static string ComputeDummyHash()
+    {
+        var salt = new byte[SaltSize]; // all-zero salt is valid for Argon2
+        var hash = ComputeHash("timing-dummy", salt);
+        return $"{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+    }
+
+    public string GetDummyHash() => CachedDummyHash;
+
     public string Hash(string password)
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSize);

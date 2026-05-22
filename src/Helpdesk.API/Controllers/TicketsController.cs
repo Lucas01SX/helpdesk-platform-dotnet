@@ -184,9 +184,12 @@ public sealed class TicketsController(
 
     private IActionResult MapAttachmentResult(Error error) => error.Code switch
     {
-        "ticket.not_found" or "attachment.not_found" => NotFound(Failure(error)),
-        "attachment.forbidden" or "attachment.internal_forbidden"
-            or "attachment.download_forbidden" => StatusCode(403, Failure(error)),
+        "ticket.not_found" or "attachment.not_found"
+            => NotFound(Failure(error)),
+        "attachment.forbidden" or "attachment.internal_forbidden" or "attachment.download_forbidden"
+            => StatusCode(403, Failure(error)),
+        "attachment.ticket_closed"
+            => Conflict(Failure(error)),
         _ => BadRequest(Failure(error))
     };
 
@@ -194,24 +197,34 @@ public sealed class TicketsController(
     {
         if (result.IsSuccess) return NoContent();
 
-        var code = result.Error!.Code;
+        return result.Error!.Code switch
+        {
+            // 404
+            "ticket.not_found"
+                => NotFound(Failure(result.Error)),
 
-        if (code == "ticket.not_found")
-            return NotFound(Failure(result.Error));
-
-        if (code is "ticket.forbidden"
+            // 403 — actor is not authorized for this operation
+            "ticket.forbidden"
             or "ticket.resolution_requires_actor"
             or "ticket.transfer_requires_actor"
-            or "ticket.priority_changer_must_be_assignee")
-            return StatusCode(403, Failure(result.Error));
+            or "ticket.priority_changer_must_be_assignee"
+                => StatusCode(403, Failure(result.Error)),
 
-        if (code.StartsWith("ticket.cannot_")
-            || code is "ticket.transfer_not_allowed"
-                or "ticket.max_priority_changes_reached"
-                or "ticket.priority_change_only_in_progress")
-            return Conflict(Failure(result.Error));
+            // 409 — state machine violations and business rule conflicts
+            "ticket.cannot_assume_in_progress"
+            or "ticket.cannot_assume_final_state"
+            or "ticket.cannot_resolve_not_in_progress"
+            or "ticket.cannot_resolve_final_state"
+            or "ticket.resolution_requires_assignee"
+            or "ticket.cannot_cancel_final_state"
+            or "ticket.transfer_not_allowed"
+            or "ticket.max_priority_changes_reached"
+            or "ticket.priority_change_only_in_progress"
+                => Conflict(Failure(result.Error)),
 
-        return BadRequest(Failure(result.Error));
+            // 400 — input validation failures
+            _ => BadRequest(Failure(result.Error))
+        };
     }
 
 }

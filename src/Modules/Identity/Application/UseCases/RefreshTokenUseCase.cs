@@ -1,6 +1,7 @@
 using Helpdesk.Modules.Identity.Application.Contracts.Responses;
 using Helpdesk.Modules.Identity.Application.Errors;
 using Helpdesk.Modules.Identity.Application.Interfaces;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
@@ -20,7 +21,7 @@ public sealed class RefreshTokenUseCase(
 
     public async Task<Result<AuthResponse>> ExecuteAsync(string rawToken, CancellationToken ct = default)
     {
-        var tokenHash = RegisterUseCase.HashToken(rawToken);
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var session = await sessionRepository.FindByTokenHashAsync(tokenHash, ct);
 
         if (session is null)
@@ -49,8 +50,8 @@ public sealed class RefreshTokenUseCase(
         // Rotate: revoke current, issue new token in same family
         session.Revoke(now);
 
-        var newRawToken = RegisterUseCase.GenerateSecureToken();
-        var newTokenHash = RegisterUseCase.HashToken(newRawToken);
+        var newRawToken = TokenHelper.GenerateSecureToken();
+        var newTokenHash = TokenHelper.HashToken(newRawToken);
 
         var newSession = UserSession.Create(
             user.Id, session.FamilyId, newTokenHash,

@@ -1,4 +1,5 @@
 using Helpdesk.Modules.Identity.Application.Errors;
+using Helpdesk.Modules.Identity.Application.Security;
 using Helpdesk.Modules.Identity.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
@@ -13,7 +14,7 @@ public sealed class VerifyEmailUseCase(
 {
     public async Task<Result> ExecuteAsync(string rawToken, CancellationToken ct = default)
     {
-        var tokenHash = RegisterUseCase.HashToken(rawToken);
+        var tokenHash = TokenHelper.HashToken(rawToken);
         var token = await userRepository.FindEmailVerificationTokenByHashAsync(tokenHash, ct);
 
         var now = clock.UtcNow;
