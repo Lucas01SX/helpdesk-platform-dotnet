@@ -20,5 +20,7 @@ internal sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEv
         builder.HasIndex(e => e.AggregateId).HasDatabaseName("ix_audit_events_aggregate_id");
         builder.HasIndex(e => e.EventType).HasDatabaseName("ix_audit_events_event_type");
         builder.HasIndex(e => e.OccurredAt).HasDatabaseName("ix_audit_events_occurred_at");
+        builder.HasIndex(e => new { e.AggregateId, e.OccurredAt })
+               .HasDatabaseName("ix_audit_events_aggregate_id_occurred_at");
     }
 }

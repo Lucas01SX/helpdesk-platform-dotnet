@@ -3,6 +3,7 @@ using Helpdesk.Modules.Tickets.Domain.Errors;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
+using Helpdesk.Shared.Notifications;
 using Helpdesk.Shared.Results;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
@@ -10,7 +11,8 @@ namespace Helpdesk.Modules.Tickets.Application.UseCases;
 public sealed class ResolveTicketUseCase(
     ITicketRepository repository,
     IDateTimeProvider clock,
-    IAuditService auditService)
+    IAuditService auditService,
+    INotificationService notifications)
 {
     public async Task<Result> ExecuteAsync(ResolveTicketRequest request, CancellationToken ct = default)
     {
@@ -25,6 +27,8 @@ public sealed class ResolveTicketUseCase(
         foreach (var evt in ticket.DomainEvents)
             await auditService.RecordAsync(evt.GetType().Name, "Ticket", ticket.Id, request.ActorId, evt, ct);
         ticket.ClearDomainEvents();
+
+        await notifications.NotifyTicketResolvedAsync(ticket.CustomerId, ticket.Id, ct);
 
         return Result.Ok();
     }

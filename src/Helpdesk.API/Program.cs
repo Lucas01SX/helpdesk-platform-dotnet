@@ -10,9 +10,11 @@ using Helpdesk.API.Persistence;
 using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity;
 using Helpdesk.Modules.Identity.Infrastructure.Security;
+using Helpdesk.Modules.Notifications;
 using Helpdesk.Modules.SLA;
 using Helpdesk.Modules.Tickets;
 using Helpdesk.Shared.Abstractions;
+using Helpdesk.Shared.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +23,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Prometheus;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -32,7 +35,11 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.AddServerHeader = false;
+        options.Limits.MaxRequestBodySize = 11 * 1024 * 1024; // 10 MB file + metadata headroom
+    });
 
     builder.Host.UseSerilog((ctx, services, config) => config
         .ReadFrom.Configuration(ctx.Configuration)
@@ -119,10 +126,12 @@ try
 
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
     builder.Services.AddSingleton<IAuditService, AuditService>();
+    builder.Services.AddScoped<IAssignableUserChecker, EfCoreAssignableUserChecker>();
 
     builder.Services.AddIdentityModule(builder.Configuration);
     builder.Services.AddTicketsModule();
     builder.Services.AddSlaModule();
+    builder.Services.AddNotificationsModule();
 
     builder.Services.AddScoped<SlaBreachProcessor>();
     builder.Services.AddHostedService<SlaBreachMonitorService>();
@@ -180,6 +189,17 @@ try
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(RateLimitPolicies.Upload, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromHours(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
             options.OnRejected = async (ctx, ct) =>
             {
                 ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
@@ -229,12 +249,15 @@ try
     app.UseSecurityHeaders();
     app.UseCors();
     app.UseHttpsRedirection();
+    app.UseHttpMetrics();
     app.UseSerilogRequestLogging();
     if (!app.Environment.IsEnvironment("Test"))
         app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
+
+    app.MapMetrics("/metrics").RequireAuthorization(p => p.RequireRole(RoleNames.Manager));
 
     app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
     {

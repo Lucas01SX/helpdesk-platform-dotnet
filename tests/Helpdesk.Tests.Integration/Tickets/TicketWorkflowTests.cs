@@ -360,12 +360,12 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
     public async Task TransferTicket_Should_Return_409_When_Ticket_Not_InProgress()
     {
         var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
-        var (agentToken, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
+        var (agentToken, agentId) = await SeedAndLoginAsync(UserRole.SupportAgent);
         var ticketId = await CreateTicketAsync(customerToken);
 
         using var client = AuthClient(agentToken);
         var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfer",
-            new { newAssigneeId = Guid.NewGuid() });
+            new { newAssigneeId = agentId, reason = "Reassigning." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -374,13 +374,13 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
     public async Task TransferTicket_Should_Return_403_When_Not_Assignee()
     {
         var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
-        var (agentAToken, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
+        var (agentAToken, agentAId) = await SeedAndLoginAsync(UserRole.SupportAgent);
         var (agentBToken, _) = await SeedAndLoginAsync(UserRole.SupportAgent);
         var ticketId = await CreateAndAssignTicketAsync(customerToken, agentAToken);
 
         using var client = AuthClient(agentBToken);
         var response = await client.PostAsJsonAsync($"/api/tickets/{ticketId}/transfer",
-            new { newAssigneeId = Guid.NewGuid() });
+            new { newAssigneeId = agentAId, reason = "Reassigning." });
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
@@ -475,8 +475,10 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var tickets = body.GetProperty("data").EnumerateArray().ToList();
+        var data = body.GetProperty("data");
+        var tickets = data.GetProperty("items").EnumerateArray().ToList();
         tickets.Should().HaveCount(2);
+        data.GetProperty("total").GetInt32().Should().Be(2);
     }
 
     [Fact]
@@ -494,8 +496,10 @@ public sealed class TicketWorkflowTests(HelpdeskWebAppFactory factory)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        var tickets = body.GetProperty("data").EnumerateArray().ToList();
+        var data = body.GetProperty("data");
+        var tickets = data.GetProperty("items").EnumerateArray().ToList();
         tickets.Count.Should().BeGreaterThanOrEqualTo(2);
+        data.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(2);
     }
 
     [Fact]
