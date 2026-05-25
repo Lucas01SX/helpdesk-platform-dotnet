@@ -126,6 +126,7 @@ try
 
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
     builder.Services.AddSingleton<IAuditService, AuditService>();
+    builder.Services.AddScoped<IAssignableUserChecker, EfCoreAssignableUserChecker>();
 
     builder.Services.AddIdentityModule(builder.Configuration);
     builder.Services.AddTicketsModule();

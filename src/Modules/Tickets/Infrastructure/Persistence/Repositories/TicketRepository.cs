@@ -16,18 +16,4 @@ internal sealed class TicketRepository(DbContext context) : ITicketRepository
 
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await context.SaveChangesAsync(ct);
-
-    public async Task<bool> IsAssignableUserAsync(Guid userId, CancellationToken ct = default)
-    {
-        var count = await context.Database
-            .SqlQuery<int>(
-                $"""
-                SELECT COUNT(*)::int
-                FROM users
-                WHERE id = {userId}
-                  AND "Role" IN ('SupportAgent', 'Manager')
-                """)
-            .SingleAsync(ct);
-        return count > 0;
-    }
 }

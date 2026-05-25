@@ -9,6 +9,7 @@ namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
 public sealed class TransferTicketUseCase(
     ITicketRepository repository,
+    IAssignableUserChecker userChecker,
     IDateTimeProvider clock,
     IAuditService auditService)
 {
@@ -17,7 +18,7 @@ public sealed class TransferTicketUseCase(
         var ticket = await repository.FindByIdAsync(request.TicketId, ct);
         if (ticket is null) return TicketAppErrors.TicketNotFound;
 
-        var isAssignable = await repository.IsAssignableUserAsync(request.NewAssigneeId, ct);
+        var isAssignable = await userChecker.IsAssignableUserAsync(request.NewAssigneeId, ct);
         if (!isAssignable) return TicketAppErrors.AssigneeNotFound;
 
         var result = ticket.Transfer(request.ActorId, request.NewAssigneeId, request.Reason, clock.UtcNow);

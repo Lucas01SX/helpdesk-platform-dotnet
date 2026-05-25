@@ -89,3 +89,20 @@ Responses:     TicketSummaryResponse, TicketResponse        ❌ ResponseModel
 Domain Events: TicketResolved, PriorityChanged              ❌ OnTicketResolved
 Tests:         Should_Not_Resolve_Ticket_Without_Assignee   ❌ TestResolve
 ```
+
+## 8. Database Access
+
+**EF Core LINQ only — raw SQL is expressly forbidden.**
+
+Use `.AnyAsync()`, `.FirstOrDefaultAsync()`, `.Where()`, `.CountAsync()` and other LINQ operators for all database queries. `SqlQuery`, `FromSqlRaw`, `ExecuteSqlRaw`, and all `Database.Sql*` variants are banned without exception.
+
+Cross-module queries (e.g., Tickets module checking if a user is an agent) are solved via a shared interface (e.g., `IAssignableUserChecker` in `Helpdesk.Shared`) implemented in the composition root (`Helpdesk.API`) where all module references converge. The implementation uses EF Core LINQ against the shared `AppDbContext`.
+
+```csharp
+// ✅ Correct — EF Core LINQ
+context.Set<User>().AnyAsync(u => u.Id == userId && u.Role == UserRole.SupportAgent)
+
+// ❌ Forbidden — raw SQL
+context.Database.SqlQuery<int>($"SELECT COUNT(*)::int FROM users WHERE id = {userId}")
+context.Database.ExecuteSqlRaw("UPDATE ...")
+```
