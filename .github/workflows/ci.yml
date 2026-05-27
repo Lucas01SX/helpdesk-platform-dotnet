@@ -54,3 +54,6 @@ jobs:
 
       - name: NuGet audit
         run: dotnet list package --vulnerable --include-transitive
+
+      - name: Verify Docker image builds
+        run: docker build -t helpdesk-dotnet:ci .
