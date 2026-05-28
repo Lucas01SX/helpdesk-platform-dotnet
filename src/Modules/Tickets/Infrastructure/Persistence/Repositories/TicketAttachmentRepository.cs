@@ -28,7 +28,7 @@ internal sealed class TicketAttachmentRepository(DbContext context) : ITicketAtt
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var attachment = await _attachments.FirstOrDefaultAsync(a => a.Id == id, ct);
+        var attachment = await _attachments.FindAsync([id], ct);
         if (attachment is not null)
             _attachments.Remove(attachment);
     }

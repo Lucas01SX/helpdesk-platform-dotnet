@@ -85,8 +85,8 @@ public sealed class UploadAttachmentUseCase(
         }
         catch
         {
-            await attachmentRepository.DeleteAsync(attachment.Id, ct);
-            await attachmentRepository.SaveChangesAsync(ct);
+            await attachmentRepository.DeleteAsync(attachment.Id, CancellationToken.None);
+            await attachmentRepository.SaveChangesAsync(CancellationToken.None);
             throw;
         }
 

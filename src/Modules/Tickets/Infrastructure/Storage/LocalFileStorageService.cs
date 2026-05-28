@@ -10,6 +10,8 @@ internal sealed class LocalFileStorageService(IConfiguration configuration) : IF
 
     public string BuildPath(Guid ticketId, string fileName)
     {
+        // fileName intentionally ignored — stored name is always a random GUID to prevent
+        // user-supplied names from reaching the filesystem.
         var ticketDir = Path.Combine(BasePath, ticketId.ToString());
         return Path.Combine(ticketDir, $"{Guid.NewGuid():N}");
     }
