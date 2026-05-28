@@ -71,5 +71,7 @@ internal sealed class TicketConfiguration : IEntityTypeConfiguration<Ticket>
                .HasDatabaseName("ix_tickets_customer_id");
         builder.HasIndex(t => t.AssigneeId)
                .HasDatabaseName("ix_tickets_assignee_id");
+        builder.HasIndex(t => new { t.AutoAssignedAt, t.Status })
+               .HasDatabaseName("ix_tickets_auto_assigned_at_status");
     }
 }
