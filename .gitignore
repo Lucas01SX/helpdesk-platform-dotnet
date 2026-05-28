@@ -25,6 +25,9 @@ TestResults/
 .env
 appsettings.*.Local.json
 
+## Superpowers specs (local design docs, not committed)
+docs/superpowers/
+
 ## OS
 .DS_Store
 Thumbs.db
