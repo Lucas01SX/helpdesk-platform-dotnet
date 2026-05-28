@@ -70,6 +70,7 @@ Named policies configured in `Program.cs` → `AddRateLimiter()`:
 | `login` | 5 requests | 60 seconds | `POST /api/auth/sessions` |
 | `password-reset` | 3 requests | 1 hour | `POST /api/auth/password-resets` |
 | `upload` | 10 requests | 1 hour | `POST /api/tickets/:id/attachments` |
+| `refresh-token` | 20 requests | 60 seconds | `PUT /api/auth/sessions/current` |
 
 All policies key by resolved IP (after `ForwardedHeaders` processing — never by raw `X-Forwarded-For` header).
 

@@ -3,9 +3,13 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Helpdesk.API.Audit;
 using Helpdesk.API.Persistence;
+using Helpdesk.Modules.Identity.Domain.Entities;
 using Helpdesk.Modules.Identity.Domain.Enums;
 using Helpdesk.Modules.SLA.Application.UseCases;
+using Helpdesk.Modules.SLA.Domain.Entities;
+using Helpdesk.Modules.Tickets.Domain.Entities;
 using Helpdesk.Tests.Integration.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,14 +29,15 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
         ResetClock();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM ticket_attachments");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM ticket_comments");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM tickets");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM sla_monthly_scores");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM user_sessions");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM email_verification_tokens");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM password_reset_tokens");
-        await db.Database.ExecuteSqlRawAsync("DELETE FROM users");
+        await db.Set<TicketAttachment>().ExecuteDeleteAsync();
+        await db.Set<TicketComment>().ExecuteDeleteAsync();
+        await db.Set<AuditEvent>().ExecuteDeleteAsync();
+        await db.Set<Ticket>().ExecuteDeleteAsync();
+        await db.Set<SlaMonthlyScore>().ExecuteDeleteAsync();
+        await db.Set<UserSession>().ExecuteDeleteAsync();
+        await db.Set<EmailVerificationToken>().ExecuteDeleteAsync();
+        await db.Set<PasswordResetToken>().ExecuteDeleteAsync();
+        await db.Set<User>().ExecuteDeleteAsync();
     }
 
     public Task DisposeAsync() => Task.CompletedTask;

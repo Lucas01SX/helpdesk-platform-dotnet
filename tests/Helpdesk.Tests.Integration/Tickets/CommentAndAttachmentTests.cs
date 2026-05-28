@@ -658,7 +658,7 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
             new AuthenticationHeaderValue("Bearer", customerToken);
 
         using var form = BuildFileContent();
-        var response = await client.PostAsync($"/api/tickets/{ticketId}/attachments", form);
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/attachments?visibility=Public", form);
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
 
