@@ -55,4 +55,24 @@ public sealed class AuthRateLimitTests(HelpdeskRateLimitWebAppFactory factory)
         var body = await lastResponse.Content.ReadAsStringAsync();
         body.Should().Contain("rate_limit_exceeded");
     }
+
+    // ── PUT /api/auth/sessions/current — 20 requests / minute / IP ──────────
+
+    [Fact]
+    public async Task SessionsPut_Should_Return_429_After_Exceeding_RefreshToken_Rate_Limit()
+    {
+        HttpResponseMessage? lastResponse = null;
+
+        // Rate limiter runs before auth — unauthenticated requests still count.
+        // Send 21 requests; the 21st must be rate-limited (limit is 20/min).
+        for (var i = 0; i < 21; i++)
+        {
+            lastResponse = await _client.PutAsync("/api/auth/sessions/current", null);
+        }
+
+        lastResponse!.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        var body = await lastResponse.Content.ReadAsStringAsync();
+        body.Should().Contain("rate_limit_exceeded");
+    }
 }

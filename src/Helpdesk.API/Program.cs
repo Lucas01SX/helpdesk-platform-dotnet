@@ -200,6 +200,17 @@ try
                         QueueLimit = 0
                     }));
 
+            options.AddPolicy(RateLimitPolicies.RefreshToken, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 20,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    }));
+
             options.OnRejected = async (ctx, ct) =>
             {
                 ctx.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;

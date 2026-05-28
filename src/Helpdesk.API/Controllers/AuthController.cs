@@ -59,6 +59,7 @@ public sealed class AuthController(
 
     // PUT /api/auth/sessions/current — replaces the current session (token rotation)
     [HttpPut("sessions/current")]
+    [EnableRateLimiting(RateLimitPolicies.RefreshToken)]
     public async Task<IActionResult> Refresh(CancellationToken ct)
     {
         var rawToken = Request.Cookies["refreshToken"];
