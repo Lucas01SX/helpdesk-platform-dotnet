@@ -2,6 +2,7 @@ namespace Helpdesk.Modules.Tickets.Domain.Interfaces;
 
 public interface IFileStorageService
 {
-    Task<string> SaveAsync(Guid ticketId, string fileName, Stream content, CancellationToken ct = default);
+    string BuildPath(Guid ticketId, string fileName);
+    Task SaveAsync(string storagePath, Stream content, CancellationToken ct = default);
     Task<Stream?> GetAsync(string storagePath, CancellationToken ct = default);
 }

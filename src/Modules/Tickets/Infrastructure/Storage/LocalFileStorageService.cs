@@ -8,25 +8,22 @@ internal sealed class LocalFileStorageService(IConfiguration configuration) : IF
     private string BasePath => configuration["Storage:LocalPath"]
         ?? Path.Combine(Directory.GetCurrentDirectory(), "uploads");
 
-    public async Task<string> SaveAsync(
-        Guid ticketId, string fileName, Stream content, CancellationToken ct = default)
+    public string BuildPath(Guid ticketId, string fileName)
     {
         var ticketDir = Path.Combine(BasePath, ticketId.ToString());
-        Directory.CreateDirectory(ticketDir);
+        return Path.Combine(ticketDir, $"{Guid.NewGuid():N}");
+    }
 
-        var storedName = $"{Guid.NewGuid():N}";
-        var fullPath = Path.Combine(ticketDir, storedName);
-
-        await using var fs = File.Create(fullPath);
+    public async Task SaveAsync(string storagePath, Stream content, CancellationToken ct = default)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(storagePath)!);
+        await using var fs = File.Create(storagePath);
         await content.CopyToAsync(fs, ct);
-
-        return fullPath;
     }
 
     public async Task<Stream?> GetAsync(string storagePath, CancellationToken ct = default)
     {
         // Prevent path traversal: reject any path that escapes the configured base directory.
-        // SaveAsync always writes under BasePath, so a legitimate path always starts here.
         var resolvedPath = Path.GetFullPath(storagePath);
         var resolvedBase = Path.GetFullPath(BasePath) + Path.DirectorySeparatorChar;
         if (!resolvedPath.StartsWith(resolvedBase, StringComparison.Ordinal))

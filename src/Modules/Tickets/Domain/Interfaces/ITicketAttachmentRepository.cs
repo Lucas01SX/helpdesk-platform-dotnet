@@ -9,5 +9,6 @@ public interface ITicketAttachmentRepository
     Task<TicketAttachment?> FindByIdAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlyList<TicketAttachment>> ListByTicketAsync(
         Guid ticketId, AttachmentVisibility? visibilityFilter, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

@@ -67,8 +67,10 @@ public sealed class UploadAttachmentUseCase(
         if (isCustomer && visibility == AttachmentVisibility.Internal)
             return TicketAppErrors.AttachmentInternalForbidden;
 
-        var storagePath = await storage.SaveAsync(
-            request.TicketId, request.FileName, request.FileContent, ct);
+        // DB-first: determine path without I/O, persist record, then write to disk.
+        // If disk write fails, compensate by deleting the DB record.
+        // This ensures no orphan files — a missing file for an existing record is detectable.
+        var storagePath = storage.BuildPath(request.TicketId, request.FileName);
 
         var attachment = TicketAttachment.Create(
             request.TicketId, request.UploadedBy, request.FileName, storagePath,
@@ -76,6 +78,17 @@ public sealed class UploadAttachmentUseCase(
 
         await attachmentRepository.AddAsync(attachment, ct);
         await attachmentRepository.SaveChangesAsync(ct);
+
+        try
+        {
+            await storage.SaveAsync(storagePath, request.FileContent, ct);
+        }
+        catch
+        {
+            await attachmentRepository.DeleteAsync(attachment.Id, ct);
+            await attachmentRepository.SaveChangesAsync(ct);
+            throw;
+        }
 
         await auditService.RecordAsync("AttachmentAdded", "Ticket", request.TicketId, request.UploadedBy,
             new { attachment.Id, attachment.FileName, attachment.ContentType }, ct);

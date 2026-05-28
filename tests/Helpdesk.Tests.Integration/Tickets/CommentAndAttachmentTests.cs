@@ -7,7 +7,9 @@ using FluentAssertions;
 using Helpdesk.API.Persistence;
 using Helpdesk.Modules.Identity.Domain.Enums;
 using Helpdesk.Modules.Tickets.Domain.Entities;
+using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Tests.Integration.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Helpdesk.Tests.Integration.Tickets;
@@ -629,5 +631,54 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
         attachment!.FileName.Should().Be(originalFileName);
         attachment.StoragePath.Should().NotContain(originalFileName);
         Path.GetFileName(attachment.StoragePath).Should().MatchRegex(@"^[0-9a-f]{32}$");
+    }
+
+    // ── Storage failure atomicity ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Upload_Should_Not_Persist_Attachment_Record_When_Storage_Fails()
+    {
+        using var brokenFactory = factory.WithWebHostBuilder(b =>
+            b.ConfigureServices(services =>
+            {
+                var descriptor = services.SingleOrDefault(
+                    d => d.ServiceType == typeof(IFileStorageService));
+                if (descriptor is not null) services.Remove(descriptor);
+                services.AddSingleton<IFileStorageService>(new ThrowingFileStorageService());
+            }));
+
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        using var client = new HttpClient(brokenFactory.Server.CreateHandler())
+        {
+            BaseAddress = new Uri("https://localhost")
+        };
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", customerToken);
+
+        using var form = BuildFileContent();
+        var response = await client.PostAsync($"/api/tickets/{ticketId}/attachments", form);
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var attachments = await db.Set<TicketAttachment>()
+            .Where(a => a.TicketId == ticketId)
+            .ToListAsync();
+        attachments.Should().BeEmpty();
+    }
+
+    private sealed class ThrowingFileStorageService : IFileStorageService
+    {
+        public string BuildPath(Guid ticketId, string fileName)
+            => Path.Combine(Path.GetTempPath(), ticketId.ToString(), $"{Guid.NewGuid():N}");
+
+        public Task SaveAsync(string storagePath, Stream content, CancellationToken ct = default)
+            => throw new IOException("Simulated storage failure");
+
+        public Task<Stream?> GetAsync(string storagePath, CancellationToken ct = default)
+            => Task.FromResult<Stream?>(null);
     }
 }
