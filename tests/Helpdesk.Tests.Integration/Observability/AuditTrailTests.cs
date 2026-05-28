@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using Helpdesk.API.Audit;
 using Helpdesk.API.Persistence;
@@ -160,9 +161,12 @@ public sealed class AuditTrailTests(HelpdeskWebAppFactory factory)
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
+        var responseBody = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var ticketId = Guid.Parse(responseBody.GetProperty("data").GetProperty("ticketId").GetString()!);
+
         var events = await GetAuditEventsAsync("TicketCreated");
-        var latest = events.OrderByDescending(e => e.OccurredAt).First();
-        latest.CorrelationId.Should().Be(correlationId);
+        var auditEvent = events.Single(e => e.AggregateId == ticketId);
+        auditEvent.CorrelationId.Should().Be(correlationId);
     }
 
     // ── Ticket Assigned ───────────────────────────────────────────────────────

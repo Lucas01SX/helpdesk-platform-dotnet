@@ -16,7 +16,7 @@ internal sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEv
         builder.Property(e => e.ActorId).HasColumnName("actor_id");
         builder.Property(e => e.Payload).HasColumnName("payload").IsRequired().HasColumnType("jsonb");
         builder.Property(e => e.OccurredAt).HasColumnName("occurred_at").IsRequired();
-        builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(64);
+        builder.Property(e => e.CorrelationId).HasColumnName("correlation_id").HasMaxLength(64); // matches CorrelationIdMiddleware.MaxLength
 
         builder.HasIndex(e => e.AggregateId).HasDatabaseName("ix_audit_events_aggregate_id");
         builder.HasIndex(e => e.EventType).HasDatabaseName("ix_audit_events_event_type");
