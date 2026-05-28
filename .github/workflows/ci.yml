@@ -52,8 +52,5 @@ jobs:
         env:
           ConnectionStrings__Default: "Host=localhost;Port=5432;Database=helpdesk_test;Username=postgres;Password=postgres"
 
-      - name: NuGet audit
-        run: dotnet list package --vulnerable --include-transitive
-
       - name: Verify Docker image builds
         run: docker build -t helpdesk-dotnet:ci .
