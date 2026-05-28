@@ -4,8 +4,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Helpdesk.API.Persistence;
-using Helpdesk.API.SLA;
 using Helpdesk.Modules.Identity.Domain.Enums;
+using Helpdesk.Modules.SLA.Application.UseCases;
 using Helpdesk.Tests.Integration.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -100,8 +100,8 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
     private async Task RunProcessorAsync()
     {
         using var scope = factory.Services.CreateScope();
-        var processor = scope.ServiceProvider.GetRequiredService<SlaBreachProcessor>();
-        await processor.ProcessAsync();
+        var useCase = scope.ServiceProvider.GetRequiredService<ProcessSlaBreachesUseCase>();
+        await useCase.ExecuteAsync();
     }
 
     private async Task<JsonElement> GetScoresDataAsync(string agentToken)

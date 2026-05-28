@@ -1,3 +1,5 @@
+using Helpdesk.Modules.SLA.Application.UseCases;
+
 namespace Helpdesk.API.SLA;
 
 public sealed class SlaBreachMonitorService(
@@ -33,8 +35,8 @@ public sealed class SlaBreachMonitorService(
     private async Task RunCycleAsync(CancellationToken ct)
     {
         using var scope = scopeFactory.CreateScope();
-        var processor = scope.ServiceProvider.GetRequiredService<SlaBreachProcessor>();
-        await processor.ProcessAsync(ct);
+        var useCase = scope.ServiceProvider.GetRequiredService<ProcessSlaBreachesUseCase>();
+        await useCase.ExecuteAsync(ct);
         logger.LogDebug("SLA breach processing cycle completed.");
     }
 }

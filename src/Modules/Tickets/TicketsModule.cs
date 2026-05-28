@@ -3,7 +3,9 @@ using Helpdesk.Modules.Tickets.Application.UseCases;
 using Helpdesk.Modules.Tickets.Domain.Interfaces;
 using Helpdesk.Modules.Tickets.Infrastructure.Persistence.Repositories;
 using Helpdesk.Modules.Tickets.Infrastructure.Queries;
+using Helpdesk.Modules.Tickets.Infrastructure.SLA;
 using Helpdesk.Modules.Tickets.Infrastructure.Storage;
+using Helpdesk.Shared.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Helpdesk.Modules.Tickets;
@@ -19,6 +21,9 @@ public static class TicketsModule
         services.AddScoped<ITicketAttachmentRepository, TicketAttachmentRepository>();
         services.AddSingleton<IFileStorageService, LocalFileStorageService>();
         services.AddScoped<TicketQueryService>();
+
+        services.AddScoped<ISlaTicketQueryService, SlaTicketQueryService>();
+        services.AddScoped<ISlaTicketCommandService, SlaTicketCommandService>();
 
         services.AddScoped<CreateTicketUseCase>();
         services.AddScoped<AssignTicketUseCase>();

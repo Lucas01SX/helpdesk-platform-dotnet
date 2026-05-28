@@ -14,6 +14,7 @@ public static class SlaModule
     {
         services.AddScoped<ISlaScoreRepository, SlaScoreRepository>();
         services.AddScoped<GetSlaScoresUseCase>();
+        services.AddScoped<ProcessSlaBreachesUseCase>();
         return services;
     }
 }

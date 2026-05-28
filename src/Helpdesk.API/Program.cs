@@ -133,7 +133,7 @@ try
     builder.Services.AddSlaModule();
     builder.Services.AddNotificationsModule();
 
-    builder.Services.AddScoped<SlaBreachProcessor>();
+    builder.Services.AddScoped<IManagerLoadQuery, EfCoreManagerLoadQuery>();
     builder.Services.AddHostedService<SlaBreachMonitorService>();
 
     // JWT authentication
