@@ -1,11 +1,15 @@
 using Helpdesk.API.Persistence;
 using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Helpdesk.API.Audit;
 
-internal sealed class AuditService(IServiceScopeFactory scopeFactory, IDateTimeProvider clock) : IAuditService
+internal sealed class AuditService(
+    IServiceScopeFactory scopeFactory,
+    IDateTimeProvider clock,
+    IHttpContextAccessor httpContextAccessor) : IAuditService
 {
     // Note: the payload field may contain PII (e.g. email in UserRegistered events).
     // LGPD/GDPR retention: audit_events rows must be purged after the applicable
@@ -18,10 +22,15 @@ internal sealed class AuditService(IServiceScopeFactory scopeFactory, IDateTimeP
         object payload,
         CancellationToken ct = default)
     {
+        var correlationId = httpContextAccessor.HttpContext?.Items["CorrelationId"] as string;
+
         await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var auditEvent = AuditEvent.Create(eventType, aggregateType, aggregateId, actorId, payload, clock.UtcNow);
+        var auditEvent = AuditEvent.Create(
+            eventType, aggregateType, aggregateId, actorId, payload,
+            clock.UtcNow, correlationId);
+
         db.Set<AuditEvent>().Add(auditEvent);
         await db.SaveChangesAsync(ct);
     }

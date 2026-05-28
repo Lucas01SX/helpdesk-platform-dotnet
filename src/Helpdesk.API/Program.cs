@@ -125,6 +125,7 @@ try
     builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
     builder.Services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+    builder.Services.AddHttpContextAccessor();
     builder.Services.AddSingleton<IAuditService, AuditService>();
     builder.Services.AddScoped<IAssignableUserChecker, EfCoreAssignableUserChecker>();
 

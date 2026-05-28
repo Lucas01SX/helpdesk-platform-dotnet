@@ -129,6 +129,42 @@ public sealed class AuditTrailTests(HelpdeskWebAppFactory factory)
         events.Should().Contain(e => e.AggregateType == "Ticket");
     }
 
+    // ── correlationId ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateTicket_Should_Persist_CorrelationId_In_Audit_Event()
+    {
+        var (email, password, _) = await factory.SeedUserAsync(
+            Helpdesk.Modules.Identity.Domain.Enums.UserRole.Customer);
+
+        var loginResponse = await _client.PostAsJsonAsync("/api/auth/sessions", new { email, password });
+        var loginBody = await loginResponse.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var token = loginBody.GetProperty("data").GetProperty("accessToken").GetString()!;
+
+        var correlationId = $"test-{Guid.NewGuid():N}";
+
+        using var client = new HttpClient(factory.Server.CreateHandler())
+        {
+            BaseAddress = new Uri("https://localhost")
+        };
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        client.DefaultRequestHeaders.Add("X-Correlation-Id", correlationId);
+
+        var response = await client.PostAsJsonAsync("/api/tickets", new
+        {
+            title = "Correlation test",
+            description = "Testing correlationId persistence",
+            priority = "Low",
+            category = "Support"
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var events = await GetAuditEventsAsync("TicketCreated");
+        var latest = events.OrderByDescending(e => e.OccurredAt).First();
+        latest.CorrelationId.Should().Be(correlationId);
+    }
+
     // ── Ticket Assigned ───────────────────────────────────────────────────────
 
     [Fact]
