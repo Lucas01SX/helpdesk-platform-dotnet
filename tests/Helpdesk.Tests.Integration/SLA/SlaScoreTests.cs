@@ -429,6 +429,28 @@ public sealed class SlaScoreTests(HelpdeskWebAppFactory factory)
         assigneeId.Should().Be(managerBId.ToString());
     }
 
+    [Fact]
+    public async Task AutoAssign_Should_Not_Throw_When_No_Managers_Exist()
+    {
+        ResetClock();
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+
+        // High priority = 1h SLA; no Manager seeded
+        var ticketId = await CreateTicketAsync(customerToken, "High");
+
+        factory.TimeProvider.Advance(TimeSpan.FromHours(2));
+
+        // Must not throw even though there are no managers in the DB
+        var act = async () => await RunProcessorAsync();
+        await act.Should().NotThrowAsync();
+
+        // Ticket must still have no assignee
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var ticket = await db.Set<Ticket>().FindAsync(ticketId);
+        ticket!.AssigneeId.Should().BeNull();
+    }
+
     // ── Auto-cancel ───────────────────────────────────────────────────────────
 
     [Fact]
