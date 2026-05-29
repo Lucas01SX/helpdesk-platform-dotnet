@@ -3,13 +3,15 @@ using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Helpdesk.API.Audit;
 
 internal sealed class AuditService(
     IServiceScopeFactory scopeFactory,
     IDateTimeProvider clock,
-    IHttpContextAccessor httpContextAccessor) : IAuditService
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<AuditService> logger) : IAuditService
 {
     // Note: the payload field may contain PII (e.g. email in UserRegistered events).
     // LGPD/GDPR retention: audit_events rows must be purged after the applicable
@@ -31,7 +33,16 @@ internal sealed class AuditService(
             eventType, aggregateType, aggregateId, actorId, payload,
             clock.UtcNow, correlationId);
 
-        db.Set<AuditEvent>().Add(auditEvent);
-        await db.SaveChangesAsync(ct);
+        try
+        {
+            db.Set<AuditEvent>().Add(auditEvent);
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Failed to record audit event {EventType} for aggregate {AggregateId}.",
+                eventType, aggregateId);
+        }
     }
 }
