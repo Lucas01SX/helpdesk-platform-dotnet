@@ -39,7 +39,8 @@ internal sealed class SlaTicketCommandService(DbContext context, IAuditService a
     {
         var ticket = await _tickets.FirstOrDefaultAsync(t => t.Id == ticketId, ct);
         if (ticket is null) return;
-        ticket.AutoAssign(managerId, criteria, now);
+        var result = ticket.AutoAssign(managerId, criteria, now);
+        if (result.IsFailure) return;
         await context.SaveChangesAsync(ct);
         await DispatchEventsAsync(ticket, null, ct);
     }
@@ -48,7 +49,8 @@ internal sealed class SlaTicketCommandService(DbContext context, IAuditService a
     {
         var ticket = await _tickets.FirstOrDefaultAsync(t => t.Id == ticketId, ct);
         if (ticket is null) return;
-        ticket.AutoCancel(reason, now);
+        var result = ticket.AutoCancel(reason, now);
+        if (result.IsFailure) return;
         await context.SaveChangesAsync(ct);
         await DispatchEventsAsync(ticket, null, ct);
     }
