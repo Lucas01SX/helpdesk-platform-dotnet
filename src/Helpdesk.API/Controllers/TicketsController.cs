@@ -173,7 +173,7 @@ public sealed class TicketsController(
     [HttpGet("{id:guid}/attachments/{attachmentId:guid}")]
     public async Task<IActionResult> DownloadAttachment(Guid id, Guid attachmentId, CancellationToken ct)
     {
-        var result = await getAttachmentFileUseCase.ExecuteAsync(attachmentId, ActorId, ActorRole, ct);
+        var result = await getAttachmentFileUseCase.ExecuteAsync(attachmentId, id, ActorId, ActorRole, ct);
         if (!result.IsSuccess)
             return MapAttachmentResult(result.Error!);
 

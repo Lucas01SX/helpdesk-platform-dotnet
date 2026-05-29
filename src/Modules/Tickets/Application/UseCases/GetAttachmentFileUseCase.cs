@@ -13,10 +13,10 @@ public sealed class GetAttachmentFileUseCase(
     IFileStorageService storage)
 {
     public async Task<Result<AttachmentFileResponse>> ExecuteAsync(
-        Guid attachmentId, Guid actorId, string actorRole, CancellationToken ct = default)
+        Guid attachmentId, Guid ticketId, Guid actorId, string actorRole, CancellationToken ct = default)
     {
         var attachment = await attachmentRepository.FindByIdAsync(attachmentId, ct);
-        if (attachment is null)
+        if (attachment is null || attachment.TicketId != ticketId)
             return TicketAppErrors.AttachmentNotFound;
 
         if (actorRole == RoleNames.Customer)
