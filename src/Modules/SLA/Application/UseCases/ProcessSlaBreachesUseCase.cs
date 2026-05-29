@@ -1,6 +1,7 @@
 using Helpdesk.Modules.SLA.Domain.Entities;
 using Helpdesk.Modules.SLA.Domain.Interfaces;
 using Helpdesk.Shared.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace Helpdesk.Modules.SLA.Application.UseCases;
 
@@ -9,7 +10,8 @@ public sealed class ProcessSlaBreachesUseCase(
     ISlaTicketCommandService ticketCommand,
     ISlaScoreRepository scoreRepository,
     IManagerLoadQuery managerQuery,
-    IDateTimeProvider clock)
+    IDateTimeProvider clock,
+    ILogger<ProcessSlaBreachesUseCase> logger)
 {
     private const int AutoCancelHoursAfterAutoAssign = 10;
     private const string AutoCancelReason =
@@ -18,11 +20,17 @@ public sealed class ProcessSlaBreachesUseCase(
     public async Task ExecuteAsync(CancellationToken ct = default)
     {
         var now = clock.UtcNow;
-        await ApplyFinalScoresAsync(now, ct);
-        await DetectNewBreachesAsync(now, ct);
-        await ApplyUnassignedPenaltiesAsync(now, ct);
-        await AutoAssignBreachedTicketsAsync(now, ct);
-        await AutoCancelTimedOutTicketsAsync(now, ct);
+        await RunPhaseAsync("ApplyFinalScores",        () => ApplyFinalScoresAsync(now, ct));
+        await RunPhaseAsync("DetectNewBreaches",        () => DetectNewBreachesAsync(now, ct));
+        await RunPhaseAsync("ApplyUnassignedPenalties", () => ApplyUnassignedPenaltiesAsync(now, ct));
+        await RunPhaseAsync("AutoAssignBreached",       () => AutoAssignBreachedTicketsAsync(now, ct));
+        await RunPhaseAsync("AutoCancelTimedOut",       () => AutoCancelTimedOutTicketsAsync(now, ct));
+    }
+
+    private async Task RunPhaseAsync(string name, Func<Task> phase)
+    {
+        try { await phase(); }
+        catch (Exception ex) { logger.LogError(ex, "SLA phase {Phase} failed.", name); }
     }
 
     private async Task ApplyFinalScoresAsync(DateTime now, CancellationToken ct)
@@ -85,13 +93,14 @@ public sealed class ProcessSlaBreachesUseCase(
         var candidates = await ticketQuery.GetCandidatesForAutoAssignAsync(ct);
         if (candidates.Count == 0) return;
 
-        var managerId = await managerQuery.GetManagerWithLowestActiveTicketCountAsync(ct);
-        if (managerId is null) return;
-
         foreach (var ticket in candidates)
+        {
+            var managerId = await managerQuery.GetManagerWithLowestActiveTicketCountAsync(ct);
+            if (managerId is null) continue;
             await ticketCommand.AutoAssignAsync(
                 ticket.Id, managerId.Value,
                 "Auto-assigned: Manager with lowest active ticket count.", now, ct);
+        }
     }
 
     private async Task AutoCancelTimedOutTicketsAsync(DateTime now, CancellationToken ct)
