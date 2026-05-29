@@ -147,6 +147,9 @@ public sealed class Ticket
 
     public Result AutoCancel(string systemReason, DateTime now)
     {
+        if (Status is TicketStatus.Resolved or TicketStatus.Cancelled)
+            return TicketErrors.CannotCancelFinalState;
+
         var from = Status;
         Status = TicketStatus.Cancelled;
         UpdatedAt = now;
