@@ -369,6 +369,82 @@ public sealed class CommentAndAttachmentTests(HelpdeskWebAppFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task UploadAttachment_Should_Return_409_When_Ticket_Is_Resolved()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (agentToken, _)    = await SeedAndLoginAsync(UserRole.SupportAgent);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        // Agent assumes + resolves the ticket
+        using var agentClient = AuthClient(agentToken);
+        (await agentClient.PostAsync($"/api/tickets/{ticketId}/assign", null)).EnsureSuccessStatusCode();
+        (await agentClient.PostAsJsonAsync($"/api/tickets/{ticketId}/resolve",
+            new { description = "Resolved by agent." })).EnsureSuccessStatusCode();
+
+        // Customer tries to upload to a resolved ticket
+        using var customerClient = AuthClient(customerToken);
+        var response = await customerClient.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetProperty("code").GetString()
+            .Should().Be("attachment.ticket_closed");
+    }
+
+    [Fact]
+    public async Task UploadAttachment_Should_Return_409_When_Ticket_Is_Cancelled()
+    {
+        var (customerToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (managerToken, _)  = await SeedAndLoginAsync(UserRole.Manager);
+        var ticketId = await CreateTicketAsync(customerToken);
+
+        // Manager cancels the ticket
+        using var managerClient = AuthClient(managerToken);
+        (await managerClient.PostAsJsonAsync($"/api/tickets/{ticketId}/cancel",
+            new { reason = "Duplicate request." })).EnsureSuccessStatusCode();
+
+        // Customer tries to upload to a cancelled ticket
+        using var customerClient = AuthClient(customerToken);
+        var response = await customerClient.PostAsync(
+            $"/api/tickets/{ticketId}/attachments?visibility=Public",
+            BuildFileContent());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("error").GetProperty("code").GetString()
+            .Should().Be("attachment.ticket_closed");
+    }
+
+    [Fact]
+    public async Task DownloadAttachment_Should_Return_404_When_TicketId_Does_Not_Match()
+    {
+        var (customerAToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (customerBToken, _) = await SeedAndLoginAsync(UserRole.Customer);
+        var (agentToken, _)     = await SeedAndLoginAsync(UserRole.SupportAgent);
+
+        // Ticket A — upload an attachment
+        var ticketAId = await CreateTicketAsync(customerAToken);
+        using var agentClient = AuthClient(agentToken);
+        var uploadResp = await agentClient.PostAsync(
+            $"/api/tickets/{ticketAId}/attachments?visibility=Public",
+            BuildFileContent("content for A", "a.txt"));
+        uploadResp.EnsureSuccessStatusCode();
+        var uploadBody = await uploadResp.Content.ReadFromJsonAsync<JsonElement>();
+        var attachmentId = uploadBody.GetProperty("data").GetProperty("attachmentId").GetString()!;
+
+        // Ticket B — a different ticket
+        var ticketBId = await CreateTicketAsync(customerBToken);
+
+        // Agent tries to download attachment A via ticket B's route (IDOR)
+        var response = await agentClient.GetAsync(
+            $"/api/tickets/{ticketBId}/attachments/{attachmentId}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
     // ── GET /api/tickets/{id}/attachments ────────────────────────────────────
 
     [Fact]
