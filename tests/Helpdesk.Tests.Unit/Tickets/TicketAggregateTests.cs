@@ -226,6 +226,19 @@ public sealed class TicketAggregateTests
         ticket.DomainEvents.Should().Contain(e => e is AutoCancelled);
     }
 
+    [Fact]
+    public void AutoCancel_Should_Not_Change_Status_When_Ticket_Is_Already_Resolved()
+    {
+        var ticket = CreateInProgressTicket();
+        ticket.Resolve(_agentId, "Fixed.", _now);
+
+        var result = ticket.AutoCancel("No resolution after 10h. Please reopen with High priority.", _now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Code.Should().Be(TicketErrors.CannotCancelFinalState.Code);
+        ticket.Status.Should().Be(TicketStatus.Resolved);
+    }
+
     // ── Group 5: Transfer ────────────────────────────────────────────────────
 
     [Fact]
