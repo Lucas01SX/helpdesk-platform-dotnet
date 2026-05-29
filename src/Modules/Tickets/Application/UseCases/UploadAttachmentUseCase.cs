@@ -7,6 +7,7 @@ using Helpdesk.Shared.Abstractions;
 using Helpdesk.Shared.Audit;
 using Helpdesk.Shared.Results;
 using Helpdesk.Shared.Security;
+using Microsoft.Extensions.Logging;
 
 namespace Helpdesk.Modules.Tickets.Application.UseCases;
 
@@ -15,7 +16,8 @@ public sealed class UploadAttachmentUseCase(
     ITicketAttachmentRepository attachmentRepository,
     IFileStorageService storage,
     IDateTimeProvider clock,
-    IAuditService auditService)
+    IAuditService auditService,
+    ILogger<UploadAttachmentUseCase> logger)
 {
     private const long MaxFileSizeBytes = 10L * 1024 * 1024;
 
@@ -83,10 +85,24 @@ public sealed class UploadAttachmentUseCase(
         {
             await storage.SaveAsync(storagePath, request.FileContent, ct);
         }
-        catch
+        catch (IOException ex)
         {
-            await attachmentRepository.DeleteAsync(attachment.Id, CancellationToken.None);
-            await attachmentRepository.SaveChangesAsync(CancellationToken.None);
+            logger.LogError(ex,
+                "File storage write failed for ticket {TicketId} path {StoragePath}. Compensating.",
+                request.TicketId, storagePath);
+
+            try
+            {
+                await attachmentRepository.DeleteAsync(attachment.Id, CancellationToken.None);
+                await attachmentRepository.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception deleteEx)
+            {
+                logger.LogError(deleteEx,
+                    "Compensating delete failed for attachment {AttachmentId}.",
+                    attachment.Id);
+            }
+
             throw;
         }
 
