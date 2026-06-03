@@ -1,6 +1,6 @@
 # Helpdesk Platform — .NET
 
-Helpdesk ticket management API built with C# .NET 10, EF Core, and PostgreSQL. Part of a multi-stack portfolio demonstrating architecture depth across .NET, NestJS, and Java.
+Helpdesk ticket management API built with C# .NET 10, EF Core, and PostgreSQL.
 
 **Stack:** C# .NET 10 · ASP.NET Core · EF Core 10 · PostgreSQL 17 · Argon2id · Serilog · xUnit · TestContainers
 
