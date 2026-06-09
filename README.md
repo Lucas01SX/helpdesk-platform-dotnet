@@ -1,7 +1,7 @@
 # Helpdesk Platform — .NET
 
-C# .NET 10 helpdesk ticket management API.
+C# .NET 10 REST API for a helpdesk ticket management system.
 
-**Stack:** C# .NET 10 · ASP.NET Core · EF Core · PostgreSQL · Argon2id · Serilog · xUnit · TestContainers
+**Stack:** C# .NET 10 · ASP.NET Core · EF Core · PostgreSQL · Argon2id · JWT · Serilog · xUnit · TestContainers
 
 > In development.
