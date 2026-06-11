@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.4" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.16.2" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modules\Tickets\Helpdesk.Tickets.Application\Helpdesk.Tickets.Application.csproj" />
+    <ProjectReference Include="..\Modules\Tickets\Helpdesk.Tickets.Infrastructure\Helpdesk.Tickets.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Helpdesk.Identity.Application\Helpdesk.Identity.Application.csproj" />
+    <ProjectReference Include="..\Modules\Identity\Helpdesk.Identity.Infrastructure\Helpdesk.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\SLA\Helpdesk.SLA.Application\Helpdesk.SLA.Application.csproj" />
+    <ProjectReference Include="..\Modules\Notifications\Helpdesk.Notifications.Application\Helpdesk.Notifications.Application.csproj" />
+  </ItemGroup>
+
+</Project>
